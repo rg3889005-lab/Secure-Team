@@ -3,11 +3,14 @@
 const mongoose = require('mongoose');
 const dns = require('dns');
 
-// Force use of Google DNS to resolve MongoDB Atlas SRV records
-dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+// Safely set DNS servers (can fail with EBADFLAGS in serverless environments)
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (_) {
+  // Ignored in restricted environments like AWS Lambda / Vercel
+}
 
-let isConnected = false;
-let isConnecting = false;
+let cachedConnection = null;
 let listenersInitialized = false;
 
 const LOCAL_FALLBACK_URI = 'mongodb://127.0.0.1:27017/secure_team_workspace';
@@ -17,12 +20,11 @@ const initListeners = () => {
   listenersInitialized = true;
 
   mongoose.connection.on('disconnected', () => {
-    isConnected = false;
+    cachedConnection = null;
     console.warn('⚠️  MongoDB disconnected.');
   });
 
   mongoose.connection.on('reconnected', () => {
-    isConnected = true;
     console.log('✅ MongoDB reconnected.');
   });
 
@@ -32,54 +34,61 @@ const initListeners = () => {
 };
 
 const connectDB = async () => {
-  if (isConnected || isConnecting) return;
+  // Return immediately if already connected
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
 
-  const primaryUri = process.env.MONGODB_URI;
+  // If a connection attempt is in progress, reuse the pending promise
+  if (mongoose.connection.readyState === 2 && cachedConnection) {
+    return cachedConnection;
+  }
+
   initListeners();
+  const primaryUri = process.env.MONGODB_URI;
 
-  // Try Primary URI (Atlas or specified)
   if (primaryUri) {
     const maskedUri = primaryUri.replace(/:([^@]+)@/, ':****@');
     try {
-      isConnecting = true;
       console.log(`Connecting to primary MongoDB URI...`);
-      const conn = await mongoose.connect(primaryUri, {
+      cachedConnection = mongoose.connect(primaryUri, {
         dbName: 'secure_team_workspace',
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
-        family: 4,
       });
 
-      isConnected = true;
-      isConnecting = false;
+      const conn = await cachedConnection;
       console.log(`✅ MongoDB connected: ${conn.connection.host}`);
-      console.log(`   Database: ${conn.connection.name}`);
-      return;
+      return conn;
     } catch (err) {
+      cachedConnection = null;
       console.warn(`⚠️ Primary MongoDB connection failed (${err.message})`);
       console.warn(`   URI: ${maskedUri}`);
+
+      // In serverless environments, fail fast rather than trying localhost
+      if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+        throw err;
+      }
     }
+  } else if (process.env.VERCEL) {
+    console.error('❌ MONGODB_URI is not set in Vercel environment variables.');
+    return;
   }
 
-  // Fallback to local MongoDB if available
-  try {
-    console.log(`Attempting fallback to local MongoDB (${LOCAL_FALLBACK_URI})...`);
-    const conn = await mongoose.connect(LOCAL_FALLBACK_URI, {
-      serverSelectionTimeoutMS: 3000,
-      family: 4,
-    });
-    isConnected = true;
-    isConnecting = false;
-    console.log(`✅ Connected to local MongoDB fallback on 127.0.0.1:27017`);
-    console.log(`   Database: ${conn.connection.name}`);
-    console.log(`   (When your Atlas credentials are confirmed, update MONGODB_URI in backend/.env)`);
-    return;
-  } catch (fallbackErr) {
-    isConnected = false;
-    isConnecting = false;
-    console.error(`❌ Local MongoDB fallback also failed: ${fallbackErr.message}`);
-    console.log('   Retrying connection in 15 seconds...');
-    setTimeout(connectDB, 15000);
+  // Fallback to local MongoDB (only for local development)
+  if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    try {
+      console.log(`Attempting fallback to local MongoDB (${LOCAL_FALLBACK_URI})...`);
+      cachedConnection = mongoose.connect(LOCAL_FALLBACK_URI, {
+        serverSelectionTimeoutMS: 3000,
+      });
+      const conn = await cachedConnection;
+      console.log(`✅ Connected to local MongoDB fallback on 127.0.0.1:27017`);
+      return conn;
+    } catch (fallbackErr) {
+      cachedConnection = null;
+      console.error(`❌ Local MongoDB fallback also failed: ${fallbackErr.message}`);
+    }
   }
 };
 
