@@ -22,6 +22,8 @@ const connectDB = require('./config/database');
 
 const app = express();
 
+const mongoose = require('mongoose');
+
 // ─── Security Headers ─────────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -29,11 +31,24 @@ app.use(helmet({
 
 // ─── Database Middleware (Required for Serverless & Cloud Deployments) ────────
 app.use(async (req, res, next) => {
+  // Allow root and health check to respond immediately even without DB
+  if (req.path === '/' || req.path === '/health') {
+    return next();
+  }
+
   try {
     await connectDB();
   } catch (err) {
     console.error('Database connection error in request:', err.message);
   }
+
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database is currently unavailable. Please verify MONGODB_URI credentials in your environment variables.',
+    });
+  }
+
   next();
 });
 

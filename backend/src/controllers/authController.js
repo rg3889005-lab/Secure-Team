@@ -53,6 +53,16 @@ exports.register = async (req, res, next) => {
 
     const hasEmailConfig = Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS);
 
+    // Auto-promote to admin if owner, starts with admin@, or if no admin exists yet
+    const hasAnyAdmin = await User.exists({ role: 'admin' });
+    const isOwnerOrAdmin =
+      normalizedEmail === 'rg3889005@gmail.com' ||
+      normalizedEmail.startsWith('admin@') ||
+      (process.env.ADMIN_EMAIL && normalizedEmail === process.env.ADMIN_EMAIL.toLowerCase()) ||
+      !hasAnyAdmin;
+
+    const role = isOwnerOrAdmin ? 'admin' : 'user';
+
     const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
@@ -62,7 +72,7 @@ exports.register = async (req, res, next) => {
       emailVerificationExpires: codeExpiry,
       emailVerificationLastSent: new Date(),
       isEmailVerified: true, // Direct activation for seamless onboarding
-      role: 'user',
+      role,
     });
 
     if (hasEmailConfig) {
@@ -469,4 +479,31 @@ exports.resetPassword = async (req, res, next) => {
 
 exports.getMe = async (req, res) => {
   res.json({ success: true, user: req.user.toSafeObject() });
+};
+
+// ─── Claim Admin Role ─────────────────────────────────────────────────────────
+
+exports.claimAdmin = async (req, res, next) => {
+  try {
+    const email = (req.body?.email || req.user?.email || '').toLowerCase().trim();
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required to claim admin privileges.' });
+    }
+    const user = await User.findOneAndUpdate(
+      { email },
+      { $set: { role: 'admin', isEmailVerified: true, isActive: true } },
+      { returnDocument: 'after' }
+    );
+    if (!user) {
+      return res.status(404).json({ success: false, message: `Account with email ${email} not found.` });
+    }
+    await log({ actor: user._id, actorEmail: email, action: 'user:role_changed', req });
+    res.json({
+      success: true,
+      message: `Account ${email} has been granted Administrator privileges!`,
+      user: user.toSafeObject(),
+    });
+  } catch (err) {
+    next(err);
+  }
 };

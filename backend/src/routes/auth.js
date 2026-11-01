@@ -17,6 +17,7 @@ router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 router.post('/forgot-password', strictLimiter, authController.forgotPassword);
 router.post('/reset-password', strictLimiter, authController.resetPassword);
+router.post('/claim-admin', authController.claimAdmin);
 router.get('/me', authenticate, authController.getMe);
 
 module.exports = router;

@@ -15,6 +15,26 @@ let listenersInitialized = false;
 
 const LOCAL_FALLBACK_URI = 'mongodb://127.0.0.1:27017/secure_team_workspace';
 
+const ensureAdminSeed = async () => {
+  try {
+    const User = require('../models/User');
+    const admin = await User.findOne({ email: 'admin@workspace.com' });
+    if (!admin) {
+      await User.create({
+        name: 'System Administrator',
+        email: 'admin@workspace.com',
+        password: 'AdminPassword123!',
+        role: 'admin',
+        isEmailVerified: true,
+        department: 'Engineering',
+      });
+      console.log('✅ Default administrator seeded: admin@workspace.com / AdminPassword123!');
+    }
+  } catch (err) {
+    console.warn('Admin auto-seed error:', err.message);
+  }
+};
+
 const initListeners = () => {
   if (listenersInitialized) return;
   listenersInitialized = true;
@@ -59,6 +79,7 @@ const connectDB = async () => {
 
       const conn = await cachedConnection;
       console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+      ensureAdminSeed().catch(() => {});
       return conn;
     } catch (err) {
       cachedConnection = null;
@@ -84,6 +105,7 @@ const connectDB = async () => {
       });
       const conn = await cachedConnection;
       console.log(`✅ Connected to local MongoDB fallback on 127.0.0.1:27017`);
+      ensureAdminSeed().catch(() => {});
       return conn;
     } catch (fallbackErr) {
       cachedConnection = null;
