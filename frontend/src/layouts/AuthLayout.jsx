@@ -1,6 +1,7 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Shield, Sparkles, Moon, Sun, CheckCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import Footer from '../components/layout/Footer';
 
 export default function AuthLayout() {
   const { isDark, toggleTheme } = useTheme();
@@ -142,8 +143,25 @@ export default function AuthLayout() {
         </div>
 
         {/* Bottom Status */}
-        <div style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)', zIndex: 1 }}>
-          © {new Date().getFullYear()} SecureTeam Workspace. Protected by End-to-End Encryption.
+        <div style={{
+          fontSize: '0.8rem',
+          color: 'rgba(255, 255, 255, 0.7)',
+          zIndex: 1,
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12
+        }}>
+          <span>© {new Date().getFullYear()} SecureTeam Workspace.</span>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <Link to="/privacy" style={{ color: 'rgba(255, 255, 255, 0.85)', textDecoration: 'none' }}>
+              Privacy Policy
+            </Link>
+            <Link to="/terms" style={{ color: 'rgba(255, 255, 255, 0.85)', textDecoration: 'none' }}>
+              Terms of Service
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -158,6 +176,7 @@ export default function AuthLayout() {
       }}>
         <div style={{ width: '100%', maxWidth: 460 }}>
           <Outlet />
+          <Footer compact={true} />
         </div>
       </div>
     </div>

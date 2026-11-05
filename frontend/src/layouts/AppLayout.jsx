@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
+import Footer from '../components/layout/Footer';
 
 export default function AppLayout() {
   return (
@@ -21,9 +22,14 @@ export default function AppLayout() {
           maxWidth: 1600,
           width: '100%',
           margin: '0 auto',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column'
         }}>
-          <Outlet />
+          <div style={{ flex: 1 }}>
+            <Outlet />
+          </div>
+          <Footer compact={true} />
         </main>
       </div>
     </div>

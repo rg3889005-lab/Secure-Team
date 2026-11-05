@@ -248,3 +248,4 @@ export default function SocialAuthButtons({ actionText = 'Continue' }) {
     </div>
   );
 }
+

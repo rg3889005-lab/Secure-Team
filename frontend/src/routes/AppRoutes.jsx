@@ -11,6 +11,10 @@ import VerifyEmail from '../pages/auth/VerifyEmail';
 import ForgotPassword from '../pages/auth/ForgotPassword';
 import ResetPassword from '../pages/auth/ResetPassword';
 
+// Public Legal Pages
+import PrivacyPolicy from '../pages/public/PrivacyPolicy';
+import TermsOfService from '../pages/public/TermsOfService';
+
 // User Workspace Pages
 import Dashboard from '../pages/user/Dashboard';
 import Projects from '../pages/user/Projects';
@@ -40,6 +44,10 @@ export default function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
+
+      {/* Public Legal Pages (Accessible without login) */}
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
 
       {/* Protected User Workspace Routes */}
       <Route
