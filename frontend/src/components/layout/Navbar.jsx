@@ -21,7 +21,7 @@ import { notificationService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function Navbar() {
-  const { user, login, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { socket } = useSocket();
   const navigate = useNavigate();
@@ -104,28 +104,6 @@ export default function Navbar() {
       navigate('/login');
     } catch {
       toast.error('Error logging out');
-    }
-  };
-
-  const handleSwitchToUser = async () => {
-    try {
-      setShowUserMenu(false);
-      await login({ email: 'dev@workspace.com', password: 'Password123!' });
-      toast.success('Switched to User Mode (Developer)');
-      navigate('/dashboard');
-    } catch {
-      toast.error('Could not switch to user account');
-    }
-  };
-
-  const handleSwitchToAdmin = async () => {
-    try {
-      setShowUserMenu(false);
-      await login({ email: 'admin@workspace.com', password: 'admin123' });
-      toast.success('Switched to Admin Mode');
-      navigate('/admin');
-    } catch {
-      toast.error('Could not switch to admin account');
     }
   };
 
@@ -507,54 +485,6 @@ export default function Navbar() {
               >
                 <User size={16} /> My Profile
               </Link>
-
-              <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
-
-              {isAdmin ? (
-                <button
-                  type="button"
-                  onClick={handleSwitchToUser}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.825rem',
-                    color: '#6366f1',
-                    fontWeight: 600,
-                    background: 'none',
-                    border: 'none',
-                    width: '100%',
-                    cursor: 'pointer',
-                    textAlign: 'left'
-                  }}
-                >
-                  ⚡ Switch to User View
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSwitchToAdmin}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.825rem',
-                    color: '#f59e0b',
-                    fontWeight: 600,
-                    background: 'none',
-                    border: 'none',
-                    width: '100%',
-                    cursor: 'pointer',
-                    textAlign: 'left'
-                  }}
-                >
-                  ⚡ Switch to Admin View
-                </button>
-              )}
 
               <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
 

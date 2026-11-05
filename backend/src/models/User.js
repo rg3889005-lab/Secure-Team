@@ -47,9 +47,10 @@ const userSchema = new mongoose.Schema(
     passwordResetExpires: { type: Date, select: false },
     passwordResetAttempts: { type: Number, default: 0, select: false },
 
-    // Google OAuth
+    // Social OAuth
     googleId: { type: String, sparse: true, unique: true },
-    authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+    facebookId: { type: String, sparse: true, unique: true },
+    authProvider: { type: String, enum: ['local', 'google', 'facebook'], default: 'local' },
 
     // Refresh tokens (hashed)
     refreshTokens: { type: [String], select: false, default: [] },

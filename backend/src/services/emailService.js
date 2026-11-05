@@ -103,4 +103,36 @@ const sendPasswordResetEmail = async (to, name, token) => {
   });
 };
 
-module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail };
+const sendSocialLoginReminderEmail = async (to, name, provider) => {
+  const providerName = provider === 'facebook' ? 'Facebook' : 'Google';
+  return sendEmail({
+    to,
+    subject: 'Sign In Instructions — Secure Team Workspace',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: 'Segoe UI', sans-serif; background:#f8fafc; margin:0; padding:40px 20px;">
+        <div style="max-width:520px; margin:0 auto; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.08);">
+          <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6); padding:32px; text-align:center;">
+            <h1 style="color:#fff; margin:0; font-size:24px;">Secure Team Workspace</h1>
+          </div>
+          <div style="padding:40px;">
+            <h2 style="color:#1e293b; margin-top:0;">Password Reset Request</h2>
+            <p style="color:#64748b; line-height:1.7;">Hi ${name}, we received a request to recover your account.</p>
+            <div style="background:#eff6ff; border-left:4px solid #3b82f6; padding:16px 20px; border-radius:8px; margin:20px 0;">
+              <p style="color:#1e40af; margin:0; font-size:15px; font-weight:600;">Your account is authenticated via ${providerName} Sign-In.</p>
+              <p style="color:#1e3a8a; margin:6px 0 0; font-size:14px; line-height:1.5;">Because you sign in with ${providerName}, your account does not have a separate local password. Please use the <strong>Continue with ${providerName}</strong> option on the sign in page to access your workspace.</p>
+            </div>
+            <p style="color:#94a3b8; font-size:14px;">If you did not make this request, you can safely ignore this email.</p>
+          </div>
+          <div style="background:#f8fafc; padding:20px; text-align:center;">
+            <p style="color:#94a3b8; font-size:12px; margin:0;">© ${new Date().getFullYear()} Secure Team Workspace</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  });
+};
+
+module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail, sendSocialLoginReminderEmail };

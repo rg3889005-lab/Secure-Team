@@ -18,6 +18,7 @@ const auditLogSchema = new mongoose.Schema(
         'auth:password_reset_requested',
         'auth:password_reset_completed',
         'auth:google_login',
+        'auth:facebook_login',
         'user:role_changed',
         'user:suspended',
         'user:activated',

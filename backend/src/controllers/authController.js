@@ -11,7 +11,7 @@ const {
   setRefreshTokenCookie,
   clearRefreshTokenCookie,
 } = require('../utils/jwt');
-const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/emailService');
+const { sendVerificationEmail, sendPasswordResetEmail, sendSocialLoginReminderEmail } = require('../services/emailService');
 const { log } = require('../services/auditService');
 const { OAuth2Client } = require('google-auth-library');
 
@@ -38,6 +38,17 @@ exports.register = async (req, res, next) => {
   try {
     const { name, email, password, department } = req.body;
 
+    // Field validation
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Name is required.' });
+    }
+    if (!email || !email.trim()) {
+      return res.status(400).json({ success: false, message: 'Email is required.' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long.' });
+    }
+
     // Normalize email
     const normalizedEmail = email.toLowerCase().trim();
 
@@ -53,16 +64,7 @@ exports.register = async (req, res, next) => {
 
     const hasEmailConfig = Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS);
 
-    // Auto-promote to admin if owner, starts with admin@, or if no admin exists yet
-    const hasAnyAdmin = await User.exists({ role: 'admin' });
-    const isOwnerOrAdmin =
-      normalizedEmail === 'rg3889005@gmail.com' ||
-      normalizedEmail.startsWith('admin@') ||
-      (process.env.ADMIN_EMAIL && normalizedEmail === process.env.ADMIN_EMAIL.toLowerCase()) ||
-      !hasAnyAdmin;
-
-    const role = isOwnerOrAdmin ? 'admin' : 'user';
-
+    // Every new registration receives USER as default role. Never allow ADMIN during registration.
     const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
@@ -72,7 +74,7 @@ exports.register = async (req, res, next) => {
       emailVerificationExpires: codeExpiry,
       emailVerificationLastSent: new Date(),
       isEmailVerified: true, // Direct activation for seamless onboarding
-      role,
+      role: 'user',
     });
 
     if (hasEmailConfig) {
@@ -84,13 +86,11 @@ exports.register = async (req, res, next) => {
 
     await log({ actor: user._id, actorEmail: normalizedEmail, action: 'auth:register', req });
 
-    // Issue tokens so the user is instantly signed in
-    const accessToken = await buildTokens(user, res);
-
+    // IMPORTANT (Phase 2): Do not automatically log in users after normal registration.
+    // Return success message so user can be redirected to the Login page.
     res.status(201).json({
       success: true,
-      message: 'Account created successfully! Welcome to your workspace.',
-      accessToken,
+      message: 'Account created successfully! Please sign in with your credentials.',
       user: user.toSafeObject(),
     });
   } catch (err) {
@@ -201,22 +201,9 @@ exports.login = async (req, res, next) => {
       normalizedEmail = 'admin@workspace.com';
     }
 
-    const user = await User.findOne({
-      $or: [{ email: normalizedEmail }, ...(normalizedEmail === 'admin@workspace.com' ? [{ email: 'admin' }] : [])],
-    }).select('+password +refreshTokens');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password +refreshTokens');
 
-    let isValidPassword = false;
-    if (user) {
-      if (
-        user.role === 'admin' &&
-        user.email === 'admin@workspace.com' &&
-        (password === 'AdminPassword123!' || password === 'admin123' || password === 'admin')
-      ) {
-        isValidPassword = true;
-      } else {
-        isValidPassword = await user.comparePassword(password);
-      }
-    }
+    const isValidPassword = user ? await user.comparePassword(password) : false;
 
     // Generic failure message to prevent account enumeration
     if (!user || !isValidPassword) {
@@ -330,6 +317,106 @@ exports.googleLogin = async (req, res, next) => {
   }
 };
 
+// ─── Facebook Sign-In ─────────────────────────────────────────────────────────
+
+exports.facebookLogin = async (req, res, next) => {
+  try {
+    const { accessToken, userID } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({ success: false, message: 'Facebook access token is required.' });
+    }
+
+    // Server-side validation via Facebook Graph API
+    const fbUrl = `https://graph.facebook.com/v19.0/me?fields=id,name,email,picture.type(large)&access_token=${encodeURIComponent(accessToken)}`;
+    const fbRes = await fetch(fbUrl);
+    const fbData = await fbRes.json();
+
+    if (fbData.error || !fbData.id) {
+      return res.status(401).json({
+        success: false,
+        message: fbData.error?.message || 'Invalid or expired Facebook credential.',
+      });
+    }
+
+    // Verify userID matches if provided
+    if (userID && fbData.id !== userID) {
+      return res.status(401).json({ success: false, message: 'Facebook user ID mismatch.' });
+    }
+
+    const facebookId = fbData.id;
+    const name = fbData.name || 'Facebook User';
+    const email = fbData.email ? fbData.email.toLowerCase().trim() : null;
+    const avatar = fbData.picture?.data?.url || null;
+
+    let user = await User.findOne({ facebookId }).select('+refreshTokens');
+
+    if (!user) {
+      if (email) {
+        const existingByEmail = await User.findOne({ email });
+        if (existingByEmail) {
+          if (existingByEmail.authProvider === 'local' && existingByEmail.password) {
+            // Require user to sign in with password first to safely link
+            return res.status(409).json({
+              success: false,
+              message: 'An account with this email already exists. Please sign in with your password to link your Facebook account.',
+            });
+          }
+          user = await User.findByIdAndUpdate(
+            existingByEmail._id,
+            { facebookId, authProvider: 'facebook', avatar: avatar || existingByEmail.avatar, isEmailVerified: true },
+            { returnDocument: 'after' }
+          ).select('+refreshTokens');
+        } else {
+          // Create new user account with USER as default role (never admin)
+          user = await User.create({
+            name,
+            email,
+            facebookId,
+            authProvider: 'facebook',
+            avatar,
+            isEmailVerified: true,
+            role: 'user',
+          });
+          user = await User.findById(user._id).select('+refreshTokens');
+        }
+      } else {
+        // Fallback for Facebook accounts registered without an email
+        const fallbackEmail = `fb_${facebookId}@workspace.local`;
+        user = await User.create({
+          name,
+          email: fallbackEmail,
+          facebookId,
+          authProvider: 'facebook',
+          avatar,
+          isEmailVerified: true,
+          role: 'user',
+        });
+        user = await User.findById(user._id).select('+refreshTokens');
+      }
+    }
+
+    if (user.isSuspended) {
+      return res.status(403).json({ success: false, message: 'Account suspended. Contact support.' });
+    }
+    if (!user.isActive) {
+      return res.status(403).json({ success: false, message: 'Account deactivated. Contact support.' });
+    }
+
+    const jwtToken = await buildTokens(user, res);
+    await log({ actor: user._id, actorEmail: user.email, action: 'auth:facebook_login', req });
+
+    res.json({
+      success: true,
+      message: 'Facebook login successful.',
+      accessToken: jwtToken,
+      user: user.toSafeObject(),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ─── Refresh Token ────────────────────────────────────────────────────────────
 
 exports.refresh = async (req, res, next) => {
@@ -406,12 +493,12 @@ exports.logout = async (req, res, next) => {
 exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = (email || '').toLowerCase().trim();
 
-    const user = await User.findOne({ email: normalizedEmail }).select('+passwordResetAttempts');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password +passwordResetAttempts');
 
-    // Generic response regardless of whether account exists
-    const genericResponse = { success: true, message: 'If this email is registered, a password reset link has been sent.' };
+    // Generic response regardless of whether account exists to prevent account enumeration
+    const genericResponse = { success: true, message: 'If this email is registered, recovery instructions have been sent.' };
 
     if (!user || !user.isActive) {
       return res.json(genericResponse);
@@ -419,6 +506,15 @@ exports.forgotPassword = async (req, res, next) => {
 
     // Rate limit: 5 resets per hour
     if (user.passwordResetAttempts >= 5) {
+      return res.json(genericResponse);
+    }
+
+    // Google / Facebook accounts without a local password (Phase 6 requirement)
+    if (user.authProvider !== 'local' && !user.password) {
+      sendSocialLoginReminderEmail(normalizedEmail, user.name, user.authProvider).catch((err) =>
+        console.error('Social reminder email failed:', err.message)
+      );
+      await log({ actor: user._id, actorEmail: normalizedEmail, action: 'auth:password_reset_requested', req });
       return res.json(genericResponse);
     }
 
@@ -448,6 +544,14 @@ exports.forgotPassword = async (req, res, next) => {
 exports.resetPassword = async (req, res, next) => {
   try {
     const { token, password } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Reset token is required.' });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long.' });
+    }
+
     const hashed = hashToken(token);
 
     const user = await User.findOne({
@@ -463,7 +567,7 @@ exports.resetPassword = async (req, res, next) => {
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     user.passwordResetAttempts = 0;
-    user.refreshTokens = []; // Revoke all sessions
+    user.refreshTokens = []; // Revoke all active sessions
     await user.save();
 
     clearRefreshTokenCookie(res);
@@ -479,31 +583,4 @@ exports.resetPassword = async (req, res, next) => {
 
 exports.getMe = async (req, res) => {
   res.json({ success: true, user: req.user.toSafeObject() });
-};
-
-// ─── Claim Admin Role ─────────────────────────────────────────────────────────
-
-exports.claimAdmin = async (req, res, next) => {
-  try {
-    const email = (req.body?.email || req.user?.email || '').toLowerCase().trim();
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email is required to claim admin privileges.' });
-    }
-    const user = await User.findOneAndUpdate(
-      { email },
-      { $set: { role: 'admin', isEmailVerified: true, isActive: true } },
-      { returnDocument: 'after' }
-    );
-    if (!user) {
-      return res.status(404).json({ success: false, message: `Account with email ${email} not found.` });
-    }
-    await log({ actor: user._id, actorEmail: email, action: 'user:role_changed', req });
-    res.json({
-      success: true,
-      message: `Account ${email} has been granted Administrator privileges!`,
-      user: user.toSafeObject(),
-    });
-  } catch (err) {
-    next(err);
-  }
 };

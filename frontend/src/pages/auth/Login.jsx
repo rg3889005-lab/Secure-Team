@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -10,14 +11,19 @@ export default function Login() {
   const location = useLocation();
 
   const [formData, setFormData] = useState({
-    email: '',
+    email: location.state?.registeredEmail || '',
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [successNotice, setSuccessNotice] = useState(location.state?.successNotice || '');
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  useEffect(() => {
+    if (location.state?.registeredEmail && !successNotice) {
+      setSuccessNotice('Account registered successfully! Please enter your password to sign in.');
+    }
+  }, [location.state, successNotice]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,12 +37,18 @@ export default function Login() {
 
     try {
       const payload = {
-        email: formData.email.trim().toLowerCase() === 'admin' ? 'admin@workspace.com' : formData.email.trim(),
+        email: formData.email.trim(),
         password: formData.password,
       };
       const user = await login(payload);
       toast.success(`Welcome back, ${user.name || 'User'}!`);
-      navigate(from || '/dashboard', { replace: true });
+
+      // Role-based redirection: Never trust client roles, server returns verified role
+      if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       const msg = err.response?.data?.message || 'Login failed. Please check your credentials.';
       setErrorMsg(msg);
@@ -56,7 +68,7 @@ export default function Login() {
       width: '100%',
       boxSizing: 'border-box'
     }}>
-      <div style={{ marginBottom: 28, textAlign: 'left' }}>
+      <div style={{ marginBottom: 24, textAlign: 'left' }}>
         <h2 style={{
           fontSize: '1.75rem',
           fontWeight: 800,
@@ -70,6 +82,24 @@ export default function Login() {
           Enter your credentials to access your secure workspace
         </p>
       </div>
+
+      {successNotice && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 16px',
+          background: 'rgba(16, 185, 129, 0.1)',
+          border: '1px solid var(--success)',
+          borderRadius: 'var(--radius)',
+          color: 'var(--success)',
+          fontSize: '0.85rem',
+          marginBottom: 20
+        }}>
+          <CheckCircle2 size={18} />
+          <span>{successNotice}</span>
+        </div>
+      )}
 
       {errorMsg && (
         <div style={{
@@ -85,46 +115,16 @@ export default function Login() {
         </div>
       )}
 
+      {/* Social Logins */}
+      <div style={{ marginBottom: 18 }}>
+        <SocialAuthButtons actionText="Sign in" />
+      </div>
+
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text)' }}>
-              Email or Username
-            </label>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                type="button"
-                onClick={() => setFormData({ email: 'dev@workspace.com', password: 'Password123!' })}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--primary)',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: 0
-                }}
-              >
-                ⚡ Fill User
-              </button>
-              <span style={{ color: 'var(--border)' }}>|</span>
-              <button
-                type="button"
-                onClick={() => setFormData({ email: 'admin@workspace.com', password: 'admin123' })}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--primary)',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  padding: 0
-                }}
-              >
-                ⚡ Fill Admin
-              </button>
-            </div>
-          </div>
+          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
+            Email Address
+          </label>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -137,9 +137,9 @@ export default function Login() {
           }}>
             <Mail size={18} style={{ color: 'var(--text-muted)' }} />
             <input
-              type="text"
+              type="email"
               required
-              placeholder="admin@workspace.com (or admin)"
+              placeholder="you@company.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               style={{

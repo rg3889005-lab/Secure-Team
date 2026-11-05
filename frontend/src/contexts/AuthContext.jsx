@@ -65,16 +65,19 @@ export const AuthProvider = ({ children }) => {
 
   const register = useCallback(async (data) => {
     const res = await authService.register(data);
-    const { accessToken: token, user: userData } = res.data || {};
-    if (token && userData) {
-      setToken(token);
-      setUser(userData);
-    }
     return res.data;
-  }, [setToken]);
+  }, []);
 
   const googleLogin = useCallback(async (credential) => {
     const res = await authService.googleLogin(credential);
+    const { accessToken: token, user: userData } = res.data;
+    setToken(token);
+    setUser(userData);
+    return userData;
+  }, [setToken]);
+
+  const facebookLogin = useCallback(async (data) => {
+    const res = await authService.facebookLogin(data);
     const { accessToken: token, user: userData } = res.data;
     setToken(token);
     setUser(userData);
@@ -104,6 +107,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     googleLogin,
+    facebookLogin,
     logout,
     updateUser,
     setUser,

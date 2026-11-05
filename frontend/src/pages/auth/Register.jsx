@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Building, ArrowRight, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import SocialAuthButtons from '../../components/auth/SocialAuthButtons';
 import toast from 'react-hot-toast';
 
 export default function Register() {
@@ -48,15 +49,22 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register({
+      const res = await register({
         name: formData.name.trim(),
         email: formData.email.trim(),
         password: formData.password,
         department: formData.department,
       });
 
-      toast.success('Registration successful! Welcome to your workspace.');
-      navigate('/dashboard');
+      // Flow: Normal registration does NOT auto-login. Redirect to Login page with notification.
+      toast.success(res?.message || 'Account created successfully! Please sign in.');
+      navigate('/login', {
+        replace: true,
+        state: {
+          registeredEmail: formData.email.trim(),
+          successNotice: 'Account created successfully! Please sign in with your credentials.',
+        },
+      });
     } catch (err) {
       const msg = err.response?.data?.message || 'Registration failed. Please try again.';
       setErrorMsg(msg);
@@ -76,7 +84,7 @@ export default function Register() {
       width: '100%',
       boxSizing: 'border-box'
     }}>
-      <div style={{ marginBottom: 24, textAlign: 'left' }}>
+      <div style={{ marginBottom: 20, textAlign: 'left' }}>
         <h2 style={{
           fontSize: '1.75rem',
           fontWeight: 800,
@@ -104,6 +112,11 @@ export default function Register() {
           {errorMsg}
         </div>
       )}
+
+      {/* Social Logins */}
+      <div style={{ marginBottom: 16 }}>
+        <SocialAuthButtons actionText="Sign up" />
+      </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div>

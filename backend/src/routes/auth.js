@@ -13,11 +13,11 @@ router.post('/verify-email', authLimiter, authController.verifyEmail);
 router.post('/resend-verification', authLimiter, authController.resendVerification);
 router.post('/login', authLimiter, authController.login);
 router.post('/google', authLimiter, authController.googleLogin);
+router.post('/facebook', authLimiter, authController.facebookLogin);
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 router.post('/forgot-password', strictLimiter, authController.forgotPassword);
 router.post('/reset-password', strictLimiter, authController.resetPassword);
-router.post('/claim-admin', authController.claimAdmin);
 router.get('/me', authenticate, authController.getMe);
 
 module.exports = router;

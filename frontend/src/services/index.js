@@ -6,6 +6,7 @@ export const authService = {
   resendVerification: (data) => api.post('/auth/resend-verification', data),
   login: (data) => api.post('/auth/login', data),
   googleLogin: (credential) => api.post('/auth/google', { credential }),
+  facebookLogin: (data) => api.post('/auth/facebook', data),
   refresh: () => api.post('/auth/refresh'),
   logout: () => api.post('/auth/logout'),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
