@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 140" width="600" height="140">
+  <defs>
+    <linearGradient id="fullBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="50%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#9333ea"/>
+    </linearGradient>
+    <filter id="fullShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#4f46e5" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Left Icon Mark -->
+  <g transform="translate(20, 20)">
+    <rect x="0" y="0" width="100" height="100" rx="24" fill="url(#fullBgGrad)" filter="url(#fullShadow)"/>
+    <!-- Shield Outline -->
+    <path d="M 50,22 L 78,34 C 78,60 66,80 50,90 C 34,80 22,60 22,34 Z"
+          fill="#ffffff" fill-opacity="0.15" stroke="#ffffff" stroke-width="2.5"/>
+    <!-- ST Text -->
+    <text x="50" y="66" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-weight="900" font-size="34" text-anchor="middle" letter-spacing="-1">
+      ST
+    </text>
+  </g>
+
+  <!-- Right Typography -->
+  <g transform="translate(144, 45)">
+    <!-- Brand Name -->
+    <text x="0" y="32" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-weight="800" font-size="36" letter-spacing="-1">
+      SecureTeam
+    </text>
+
+    <!-- Golden Sparkle Accent -->
+    <path transform="translate(228, 10) scale(0.9)" d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="#f59e0b"/>
+
+    <!-- Subtitle -->
+    <text x="0" y="58" fill="#64748b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-weight="600" font-size="16" letter-spacing="0.5">
+      ENTERPRISE WORKSPACE
+    </text>
+  </g>
+</svg>
