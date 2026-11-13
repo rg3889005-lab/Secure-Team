@@ -18,8 +18,11 @@ import TermsOfService from '../pages/public/TermsOfService';
 // User Workspace Pages
 import Dashboard from '../pages/user/Dashboard';
 import Projects from '../pages/user/Projects';
+import ProjectWorkspace from '../pages/user/ProjectWorkspace';
+import ProjectInvitations from '../pages/user/ProjectInvitations';
+import DirectMessages from '../pages/user/DirectMessages';
+import MembersDirectory from '../pages/user/MembersDirectory';
 import Tasks from '../pages/user/Tasks';
-import Chat from '../pages/user/Chat';
 import Files from '../pages/user/Files';
 import Profile from '../pages/user/Profile';
 
@@ -59,8 +62,12 @@ export default function AppRoutes() {
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
+        <Route path="/projects/:projectId" element={<ProjectWorkspace />} />
+        <Route path="/invitations" element={<ProjectInvitations />} />
+        <Route path="/messages" element={<DirectMessages />} />
+        <Route path="/chat" element={<DirectMessages />} />
+        <Route path="/members" element={<MembersDirectory />} />
         <Route path="/tasks" element={<Tasks />} />
-        <Route path="/chat" element={<Chat />} />
         <Route path="/files" element={<Files />} />
         <Route path="/profile" element={<Profile />} />
 

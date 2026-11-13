@@ -16,6 +16,7 @@ const taskRoutes = require('./routes/tasks');
 const chatRoutes = require('./routes/chat');
 const fileRoutes = require('./routes/files');
 const notificationRoutes = require('./routes/notifications');
+const invitationRoutes = require('./routes/invitations');
 const adminRoutes = require('./routes/admin');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const connectDB = require('./config/database');
@@ -116,8 +117,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/conversations', chatRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/invitations', invitationRoutes);
 app.use('/api/admin', adminRoutes);
 
 // ─── 404 & Error Handler ─────────────────────────────────────────────────────

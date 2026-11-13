@@ -8,5 +8,7 @@ router.use(authenticate);
 router.get('/me', userController.getProfile);
 router.patch('/me', userController.updateProfile);
 router.patch('/me/password', userController.changePassword);
+router.get('/search', userController.searchUsers);
+router.get('/:userId/public-profile', userController.getPublicProfile);
 
 module.exports = router;

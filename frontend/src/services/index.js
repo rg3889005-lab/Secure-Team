@@ -18,16 +18,33 @@ export const userService = {
   getProfile: () => api.get('/users/me'),
   updateProfile: (data) => api.patch('/users/me', data),
   changePassword: (data) => api.patch('/users/me/password', data),
+  searchUsers: (params) => api.get('/users/search', { params }),
+  getPublicProfile: (userId) => api.get(`/users/${userId}/public-profile`),
 };
 
 export const projectService = {
   getProjects: (params) => api.get('/projects', { params }),
+  getMyProjects: (params) => api.get('/projects/my', { params }),
+  getDiscoverProjects: (params) => api.get('/projects/discover', { params }),
   createProject: (data) => api.post('/projects', data),
   getProject: (id) => api.get(`/projects/${id}`),
   updateProject: (id, data) => api.patch(`/projects/${id}`, data),
   deleteProject: (id) => api.delete(`/projects/${id}`),
+  getMembers: (id) => api.get(`/projects/${id}/members`),
   addMember: (id, data) => api.post(`/projects/${id}/members`, data),
+  updateMemberRole: (id, userId, role) => api.patch(`/projects/${id}/members/${userId}/role`, { role }),
   removeMember: (id, userId) => api.delete(`/projects/${id}/members/${userId}`),
+  getProjectMessages: (id, params) => api.get(`/projects/${id}/messages`, { params }),
+  sendProjectMessage: (id, data) => api.post(`/projects/${id}/messages`, data),
+  sendInvitation: (id, data) => api.post(`/projects/${id}/invitations`, data),
+  getProjectInvitations: (id) => api.get(`/projects/${id}/invitations`),
+};
+
+export const invitationService = {
+  getMyInvitations: () => api.get('/invitations/my'),
+  acceptInvitation: (id, data) => api.post(`/invitations/${id}/accept`, data),
+  rejectInvitation: (id) => api.post(`/invitations/${id}/reject`),
+  cancelInvitation: (id) => api.delete(`/invitations/${id}`),
 };
 
 export const taskService = {
@@ -43,6 +60,8 @@ export const chatService = {
   getConversations: () => api.get('/conversations'),
   createConversation: (data) => api.post('/conversations', data),
   getMessages: (id, params) => api.get(`/conversations/${id}/messages`, { params }),
+  sendMessage: (id, data) => api.post(`/conversations/${id}/messages`, data),
+  markAsRead: (id) => api.patch(`/conversations/${id}/read`),
   getUnreadCount: (id) => api.get(`/conversations/${id}/unread`),
 };
 

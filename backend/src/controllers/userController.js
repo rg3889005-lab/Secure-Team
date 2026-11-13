@@ -52,3 +52,46 @@ exports.changePassword = async (req, res, next) => {
     next(err);
   }
 };
+
+// GET /api/users/search?q=query
+exports.searchUsers = async (req, res, next) => {
+  try {
+    const { q, limit = 20 } = req.query;
+    const query = { isActive: true, isSuspended: false };
+
+    if (q && q.trim()) {
+      const searchRegex = new RegExp(q.trim(), 'i');
+      query.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { department: searchRegex },
+        { jobTitle: searchRegex },
+      ];
+    }
+
+    const users = await User.find(query)
+      .select('name email avatar department jobTitle role lastSeen')
+      .limit(Math.min(50, parseInt(limit, 10) || 20))
+      .sort({ name: 1 });
+
+    res.json({ success: true, data: users, users });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/users/:userId/public-profile
+exports.getPublicProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.userId)
+      .select('name email avatar department jobTitle bio role lastSeen createdAt');
+
+    if (!user || !user.isActive || user.isSuspended) {
+      return res.status(404).json({ success: false, message: 'User not found or account inaccessible.' });
+    }
+
+    res.json({ success: true, data: user });
+  } catch (err) {
+    next(err);
+  }
+};

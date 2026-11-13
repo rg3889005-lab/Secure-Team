@@ -2,21 +2,31 @@
 
 const mongoose = require('mongoose');
 
-const messageSchema = new mongoose.Schema(
+const directMessageSchema = new mongoose.Schema(
   {
-    conversation: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true },
-    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    conversation: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Conversation',
+      required: [true, 'Conversation reference is required'],
+    },
+    sender: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Sender reference is required'],
+    },
     content: {
       type: String,
       required: [true, 'Message content is required'],
+      trim: true,
       maxlength: [4000, 'Message cannot exceed 4000 characters'],
     },
-    type: { type: String, enum: ['text', 'file', 'system'], default: 'text' },
     attachments: [
       {
         file: { type: mongoose.Schema.Types.ObjectId, ref: 'File' },
         filename: String,
         mimetype: String,
+        size: Number,
+        url: String,
       },
     ],
     readBy: [
@@ -31,38 +41,49 @@ const messageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-messageSchema.index({ conversation: 1, createdAt: -1 });
-messageSchema.index({ sender: 1 });
+directMessageSchema.index({ conversation: 1, createdAt: -1 });
+directMessageSchema.index({ sender: 1 });
 
 const conversationSchema = new mongoose.Schema(
   {
-    name: { type: String, trim: true, maxlength: 200, default: null },
-    type: { type: String, enum: ['direct', 'group', 'project'], default: 'direct' },
-    project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', default: null },
-    members: [
+    // For 1-to-1 Direct Messages
+    participants: [
       {
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-        role: { type: String, enum: ['admin', 'member'], default: 'member' },
-        joinedAt: { type: Date, default: Date.now },
-        lastRead: { type: Date, default: null },
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
       },
     ],
-    lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+    // Legacy support for group/name
+    name: { type: String, trim: true, maxlength: 200, default: null },
+    type: { type: String, enum: ['direct', 'group'], default: 'direct' },
+    lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'DirectMessage', default: null },
     lastActivity: { type: Date, default: Date.now },
+    unreadCounts: {
+      type: Map,
+      of: Number,
+      default: {},
+    },
+    blockedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     isArchived: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-conversationSchema.index({ 'members.user': 1 });
-conversationSchema.index({ project: 1 });
+conversationSchema.index({ participants: 1 });
 conversationSchema.index({ lastActivity: -1 });
 
-conversationSchema.methods.isMember = function (userId) {
-  return this.members.some((m) => m.user.toString() === userId.toString());
+conversationSchema.methods.isParticipant = function (userId) {
+  if (!userId) return false;
+  const uid = userId.toString();
+  return Array.isArray(this.participants) && this.participants.some((p) => (p._id || p).toString() === uid);
 };
 
+const DirectMessage = mongoose.model('DirectMessage', directMessageSchema);
+const Conversation = mongoose.model('Conversation', conversationSchema);
+
 module.exports = {
-  Conversation: mongoose.model('Conversation', conversationSchema),
-  Message: mongoose.model('Message', messageSchema),
+  Conversation,
+  DirectMessage,
+  Message: DirectMessage, // Backward compatibility alias
 };

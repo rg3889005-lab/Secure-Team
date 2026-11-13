@@ -13,7 +13,8 @@ import {
   Radio,
   Wifi,
   WifiOff,
-  Sparkles
+  Sparkles,
+  Inbox
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
@@ -25,8 +26,10 @@ export default function Sidebar() {
   const userNavItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Projects', path: '/projects', icon: FolderKanban },
+    { name: 'Invitations', path: '/invitations', icon: Inbox },
+    { name: 'Direct Messages', path: '/messages', icon: MessageSquare },
+    { name: 'Members Directory', path: '/members', icon: Users },
     { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-    { name: 'Team Chat', path: '/chat', icon: MessageSquare },
     { name: 'Files & Media', path: '/files', icon: FolderOpen },
     { name: 'My Profile', path: '/profile', icon: User },
   ];

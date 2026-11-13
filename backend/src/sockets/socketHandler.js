@@ -2,7 +2,9 @@
 
 const { verifyAccessToken } = require('../utils/jwt');
 const User = require('../models/User');
-const { Conversation, Message } = require('../models/Chat');
+const Project = require('../models/Project');
+const ProjectMessage = require('../models/ProjectMessage');
+const { Conversation, DirectMessage } = require('../models/Chat');
 
 // Track online users: userId -> Set of socketIds
 const onlineUsers = new Map();
@@ -33,7 +35,7 @@ const initializeSockets = (io) => {
       socket.userRole = user.role;
       socket.user = { id: user._id.toString(), name: user.name, avatar: user.avatar, email: user.email };
       next();
-    } catch (err) {
+    } catch {
       next(new Error('Authentication error.'));
     }
   });
@@ -49,149 +51,251 @@ const initializeSockets = (io) => {
     // Join personal notification room
     socket.join(`user:${userId}`);
 
-    // Broadcast online status only if first connection
+    // Broadcast online status only if first active connection
     if (onlineUsers.get(userId).size === 1) {
       socket.broadcast.emit('presence:online', { userId, user: socket.user });
     }
 
-    // Send current online users to the newly connected socket
+    // Send current online users list to newly connected socket
     const onlineList = Array.from(onlineUsers.keys());
     socket.emit('presence:list', onlineList);
 
-    console.log(`🔌 Socket connected: ${socket.user.name} (${socket.id})`);
+    // ─── PROJECT ROOM CHAT ──────────────────────────────────────────────────
 
-    // ─── Join Conversation Room ─────────────────────────────────────────────
-    const handleJoinConversation = async (data) => {
+    // Join Project Room with membership verification
+    socket.on('project:join', async (data) => {
       try {
-        const conversationId = typeof data === 'string' ? data : data?.conversationId;
-        if (!conversationId) return;
-        socket.join(`conversation:${conversationId}`);
-      } catch (err) {
-        socket.emit('error', { message: 'Failed to join conversation.' });
-      }
-    };
-    socket.on('conversation:join', handleJoinConversation);
-    socket.on('chat:join', handleJoinConversation);
+        const projectId = typeof data === 'string' ? data : data?.projectId;
+        if (!projectId) return;
 
-    // ─── Leave Conversation Room ────────────────────────────────────────────
-    const handleLeaveConversation = (data) => {
-      const conversationId = typeof data === 'string' ? data : data?.conversationId;
-      if (conversationId) socket.leave(`conversation:${conversationId}`);
-    };
-    socket.on('conversation:leave', handleLeaveConversation);
-    socket.on('chat:leave', handleLeaveConversation);
-
-    // ─── Join Project Room ──────────────────────────────────────────────────
-    socket.on('project:join', async (projectId) => {
-      try {
-        const Project = require('../models/Project');
         const project = await Project.findById(projectId);
-        if (!project) return;
-        const isAdmin = socket.userRole === 'admin';
-        if (!isAdmin && !project.isMember(userId)) {
-          socket.emit('error', { message: 'Not a member of this project.' });
+        if (!project) {
+          socket.emit('project:error', { message: 'Project not found.' });
           return;
         }
+
+        if (!project.isMember(userId)) {
+          socket.emit('project:error', { message: 'Access denied: You are not a member of this project.' });
+          return;
+        }
+
         socket.join(`project:${projectId}`);
+        socket.emit('project:joined', { projectId });
       } catch (err) {
-        socket.emit('error', { message: 'Failed to join project room.' });
+        socket.emit('project:error', { message: 'Failed to join project room.' });
       }
     });
 
-    // ─── Send Message ───────────────────────────────────────────────────────
-    const handleSendMessage = async (data) => {
-      try {
-        const { conversationId, content } = data || {};
+    // Leave Project Room
+    socket.on('project:leave', (data) => {
+      const projectId = typeof data === 'string' ? data : data?.projectId;
+      if (projectId) {
+        socket.leave(`project:${projectId}`);
+      }
+    });
 
-        if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    // Send Project Room Message
+    socket.on('project:message', async (data) => {
+      try {
+        const { projectId, content, attachments } = data || {};
+        if (!projectId || !content || !content.trim()) return;
+
+        const project = await Project.findById(projectId);
+        if (!project || !project.isMember(userId)) {
+          socket.emit('project:error', { message: 'Access denied: Cannot send message to this project.' });
           return;
         }
 
-        let targetConvId = conversationId;
-        let conversation = null;
-        if (targetConvId && targetConvId !== 'general-channel') {
-          conversation = await Conversation.findById(targetConvId);
-        }
-
-        if (!conversation) {
-          conversation = await Conversation.findOne({ name: 'General Team Chat' });
-          if (!conversation) {
-            conversation = await Conversation.create({
-              type: 'group',
-              name: 'General Team Chat',
-              members: [{ user: userId, role: 'member' }],
-            });
-          }
-          targetConvId = conversation._id.toString();
-        }
-
-        // Auto-join membership
-        const isMember = conversation.members.some((m) => m.user.toString() === userId.toString());
-        if (!isMember) {
-          conversation.members.push({ user: userId, role: 'member' });
-          await conversation.save();
-        }
-
-        // Persist message
-        const message = await Message.create({
-          conversation: conversation._id,
+        const message = await ProjectMessage.create({
+          project: project._id,
           sender: userId,
           content: content.trim(),
-          type: 'text',
-        });
-
-        await Conversation.findByIdAndUpdate(conversation._id, {
-          lastMessage: message._id,
-          lastActivity: new Date(),
+          attachments: Array.isArray(attachments) ? attachments : [],
+          readBy: [{ user: userId, readAt: new Date() }],
         });
 
         const populated = await message.populate('sender', 'name avatar email');
 
-        // Emit to conversation room and broadcast
-        io.to(`conversation:${conversation._id}`).emit('chat:message', populated);
-        socket.emit('chat:message', populated);
-        socket.broadcast.emit('chat:message', populated);
+        // Strictly broadcast ONLY to project room members
+        io.to(`project:${projectId}`).emit('project:message', populated);
       } catch (err) {
-        console.error('Socket chat error:', err.message);
+        socket.emit('project:error', { message: 'Failed to send project message.' });
+      }
+    });
+
+    // Project Typing Indicator (sent only to project room)
+    socket.on('project:typing', (data) => {
+      const projectId = typeof data === 'string' ? data : data?.projectId;
+      if (projectId) {
+        socket.to(`project:${projectId}`).emit('project:typing', {
+          projectId,
+          userId,
+          user: socket.user,
+        });
+      }
+    });
+
+    socket.on('project:stop_typing', (data) => {
+      const projectId = typeof data === 'string' ? data : data?.projectId;
+      if (projectId) {
+        socket.to(`project:${projectId}`).emit('project:stop_typing', {
+          projectId,
+          userId,
+        });
+      }
+    });
+
+    // Project Message Read Receipt
+    socket.on('project:read', async (data) => {
+      try {
+        const { projectId, messageId } = data || {};
+        if (projectId && messageId) {
+          await ProjectMessage.findByIdAndUpdate(messageId, {
+            $addToSet: { readBy: { user: userId, readAt: new Date() } },
+          });
+          socket.to(`project:${projectId}`).emit('project:read', { projectId, messageId, userId });
+        }
+      } catch {}
+    });
+
+    // ─── 1-TO-1 DIRECT MESSAGING (DM) ───────────────────────────────────────
+
+    // Join DM Conversation Room with participant verification
+    const handleJoinDM = async (data) => {
+      try {
+        const conversationId = typeof data === 'string' ? data : (data?.conversationId || data?.id);
+        if (!conversationId) return;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation || !conversation.isParticipant(userId)) {
+          socket.emit('dm:error', { message: 'Access denied: You are not a participant in this conversation.' });
+          return;
+        }
+
+        socket.join(`dm:${conversationId}`);
+        socket.emit('dm:joined', { conversationId });
+      } catch {
+        socket.emit('dm:error', { message: 'Failed to join direct message conversation.' });
       }
     };
+    socket.on('dm:join', handleJoinDM);
+    socket.on('chat:join', handleJoinDM); // Legacy compatibility
 
-    socket.on('chat:send', handleSendMessage);
-    socket.on('chat:message', handleSendMessage);
+    // Leave DM Room
+    const handleLeaveDM = (data) => {
+      const conversationId = typeof data === 'string' ? data : (data?.conversationId || data?.id);
+      if (conversationId) {
+        socket.leave(`dm:${conversationId}`);
+      }
+    };
+    socket.on('dm:leave', handleLeaveDM);
+    socket.on('chat:leave', handleLeaveDM); // Legacy compatibility
 
-    // ─── Typing Indicator ───────────────────────────────────────────────────
-    socket.on('chat:typing', (data) => {
+    // Send Direct Message
+    const handleSendDM = async (data) => {
+      try {
+        const { conversationId, content, attachments } = data || {};
+        if (!conversationId || !content || !content.trim()) return;
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation || !conversation.isParticipant(userId)) {
+          socket.emit('dm:error', { message: 'Access denied: You are not authorized to send messages here.' });
+          return;
+        }
+
+        if (conversation.blockedBy) {
+          socket.emit('dm:error', { message: 'Direct messaging has been blocked in this conversation.' });
+          return;
+        }
+
+        const message = await DirectMessage.create({
+          conversation: conversation._id,
+          sender: userId,
+          content: content.trim(),
+          attachments: Array.isArray(attachments) ? attachments : [],
+          readBy: [{ user: userId, readAt: new Date() }],
+        });
+
+        // Update conversation metadata
+        const otherParticipant = conversation.participants.find(
+          (p) => p.toString() !== userId
+        );
+        const otherIdStr = otherParticipant ? otherParticipant.toString() : null;
+
+        if (otherIdStr && conversation.unreadCounts) {
+          const currentUnread = conversation.unreadCounts.get(otherIdStr) || 0;
+          conversation.unreadCounts.set(otherIdStr, currentUnread + 1);
+        }
+        conversation.lastMessage = message._id;
+        conversation.lastActivity = new Date();
+        await conversation.save();
+
+        const populated = await message.populate('sender', 'name avatar email');
+
+        // Strictly broadcast ONLY to the DM room and the other participant's user room
+        io.to(`dm:${conversationId}`).emit('dm:message', populated);
+
+        if (otherIdStr) {
+          io.to(`user:${otherIdStr}`).emit('dm:notification', {
+            conversationId: conversation._id,
+            message: populated,
+            sender: socket.user,
+          });
+        }
+      } catch (err) {
+        socket.emit('dm:error', { message: 'Failed to send message.' });
+      }
+    };
+    socket.on('dm:message', handleSendDM);
+    socket.on('chat:message', handleSendDM); // Legacy compatibility
+    socket.on('chat:send', handleSendDM); // Legacy compatibility
+
+    // DM Typing Indicator
+    socket.on('dm:typing', (data) => {
       const convId = typeof data === 'string' ? data : data?.conversationId;
-      socket.broadcast.emit('chat:typing', {
-        userId,
-        conversationId: convId,
-        user: socket.user,
-        isTyping: true,
-      });
+      if (convId) {
+        socket.to(`dm:${convId}`).emit('dm:typing', {
+          conversationId: convId,
+          userId,
+          user: socket.user,
+        });
+      }
     });
 
-    socket.on('chat:stop_typing', (data) => {
+    socket.on('dm:stop_typing', (data) => {
       const convId = typeof data === 'string' ? data : data?.conversationId;
-      socket.broadcast.emit('chat:stop_typing', {
-        userId,
-        conversationId: convId,
-      });
+      if (convId) {
+        socket.to(`dm:${convId}`).emit('dm:stop_typing', {
+          conversationId: convId,
+          userId,
+        });
+      }
     });
 
-    // ─── Disconnect ─────────────────────────────────────────────────────────
+    // DM Read Receipt
+    socket.on('dm:read', async (data) => {
+      try {
+        const { conversationId, messageId } = data || {};
+        if (conversationId && messageId) {
+          await DirectMessage.findByIdAndUpdate(messageId, {
+            $addToSet: { readBy: { user: userId, readAt: new Date() } },
+          });
+          socket.to(`dm:${conversationId}`).emit('dm:read', { conversationId, messageId, userId });
+        }
+      } catch {}
+    });
+
+    // ─── Disconnection ───────────────────────────────────────────────────────
     socket.on('disconnect', () => {
       const userSockets = onlineUsers.get(userId);
       if (userSockets) {
         userSockets.delete(socket.id);
         if (userSockets.size === 0) {
           onlineUsers.delete(userId);
-          // Mark offline only when last connection closes
           io.emit('presence:offline', { userId });
-          // Update lastSeen
           User.findByIdAndUpdate(userId, { lastSeen: new Date() }).catch(() => {});
         }
       }
-      console.log(`🔌 Socket disconnected: ${socket.user?.name} (${socket.id})`);
     });
   });
 

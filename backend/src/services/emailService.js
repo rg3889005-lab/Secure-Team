@@ -135,4 +135,74 @@ const sendSocialLoginReminderEmail = async (to, name, provider) => {
   });
 };
 
-module.exports = { sendEmail, sendVerificationEmail, sendPasswordResetEmail, sendSocialLoginReminderEmail };
+const sendProjectInvitationEmail = async ({ to, inviterName, projectName, projectRole, token, expiresAt }) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const acceptUrl = `${frontendUrl}/invitations?token=${token}&action=accept`;
+  const rejectUrl = `${frontendUrl}/invitations?token=${token}&action=reject`;
+  const formattedExpiry = new Date(expiresAt).toLocaleDateString(undefined, {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  return sendEmail({
+    to,
+    subject: `Invitation to join project "${projectName}" on SecureTeam`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: 'Segoe UI', -apple-system, sans-serif; background:#f8fafc; margin:0; padding:40px 20px;">
+        <div style="max-width:560px; margin:0 auto; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.08); border:1px solid #e2e8f0;">
+          <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed); padding:36px; text-align:center;">
+            <div style="display:inline-block; width:44px; height:44px; line-height:44px; border-radius:12px; background:rgba(255,255,255,0.2); color:#fff; font-size:20px; font-weight:800; margin-bottom:12px;">ST</div>
+            <h1 style="color:#fff; margin:0; font-size:24px; font-weight:800; letter-spacing:-0.02em;">SecureTeam Workspace</h1>
+            <p style="color:rgba(255,255,255,0.85); margin:6px 0 0; font-size:14px;">Project Collaboration Invitation</p>
+          </div>
+          <div style="padding:36px 32px;">
+            <h2 style="color:#0f172a; margin-top:0; font-size:20px;">You've been invited!</h2>
+            <p style="color:#475569; line-height:1.6; font-size:15px;">
+              <strong>${inviterName}</strong> has invited you to join the private workspace for <strong>${projectName}</strong> as a <strong>${projectRole === 'team-leader' ? 'Team Leader' : 'Team Member'}</strong>.
+            </p>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:20px; margin:24px 0;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span style="color:#64748b; font-size:13px;">Project Name:</span>
+                <strong style="color:#0f172a; font-size:14px;">${projectName}</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span style="color:#64748b; font-size:13px;">Assigned Role:</span>
+                <span style="background:#e0e7ff; color:#4338ca; padding:2px 8px; border-radius:6px; font-weight:600; font-size:12px; text-transform:capitalize;">${projectRole}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:#64748b; font-size:13px;">Expires On:</span>
+                <span style="color:#ef4444; font-size:13px; font-weight:500;">${formattedExpiry}</span>
+              </div>
+            </div>
+
+            <div style="text-align:center; margin:32px 0;">
+              <a href="${acceptUrl}" style="display:inline-block; background:#4f46e5; color:#fff; text-decoration:none; padding:14px 28px; border-radius:10px; font-weight:700; font-size:15px; margin:0 8px 12px; box-shadow:0 4px 14px rgba(79,70,229,0.35);">Accept Invitation</a>
+              <a href="${rejectUrl}" style="display:inline-block; background:#f1f5f9; color:#475569; text-decoration:none; padding:14px 24px; border-radius:10px; font-weight:600; font-size:15px; margin:0 8px 12px; border:1px solid #cbd5e1;">Decline</a>
+            </div>
+
+            <p style="color:#94a3b8; font-size:13px; line-height:1.5; text-align:center; margin:0;">
+              This invitation was sent securely to ${to}. If you do not have an account yet, you will be prompted to sign up with this email before joining.
+            </p>
+          </div>
+          <div style="background:#f8fafc; border-top:1px solid #e2e8f0; padding:20px; text-align:center;">
+            <p style="color:#94a3b8; font-size:12px; margin:0;">© ${new Date().getFullYear()} SecureTeam Workspace. Protected by End-to-End Encryption.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  });
+};
+
+module.exports = {
+  sendEmail,
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendSocialLoginReminderEmail,
+  sendProjectInvitationEmail,
+};
