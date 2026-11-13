@@ -12,6 +12,32 @@ import {
 import { adminService } from '../../services';
 import toast from 'react-hot-toast';
 
+const formatAuditDetails = (details, description) => {
+  if (!details && !description) return '—';
+  if (typeof details === 'string') return details;
+  if (typeof details === 'object' && details !== null) {
+    if (details.from && details.to) {
+      return `Role changed from "${details.from}" to "${details.to}"`;
+    }
+    if (details.reason) {
+      return `Reason: ${details.reason}`;
+    }
+    if (details.recipientEmail) {
+      return `Invited: ${details.recipientEmail} (${details.role || 'member'})`;
+    }
+    try {
+      const entries = Object.entries(details);
+      if (entries.length === 0) return description || '—';
+      return entries
+        .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+        .join(', ');
+    } catch {
+      return description || '—';
+    }
+  }
+  return description || '—';
+};
+
 export default function AuditLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +70,7 @@ export default function AuditLogs() {
     const rows = logs.map((l) => [
       l.action,
       l.user?.email || 'System',
-      `"${l.details || l.description || ''}"`,
+      `"${formatAuditDetails(l.details, l.description).replace(/"/g, '""')}"`,
       l.ipAddress || '127.0.0.1',
       l.createdAt ? new Date(l.createdAt).toISOString() : '',
     ]);
@@ -60,8 +86,9 @@ export default function AuditLogs() {
   };
 
   const filteredLogs = logs.filter((l) => {
+    const formattedD = formatAuditDetails(l.details, l.description).toLowerCase();
     const matchesSearch = l.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      formattedD.includes(searchTerm.toLowerCase()) ||
       l.user?.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesAction = actionFilter === 'ALL' || l.action === actionFilter;
     return matchesSearch && matchesAction;
@@ -188,7 +215,7 @@ export default function AuditLogs() {
                     {l.user?.name || l.user?.email || 'System Operation'}
                   </td>
                   <td style={{ padding: '14px 18px', color: 'var(--text-muted)' }}>
-                    {l.details || l.description || '—'}
+                    {formatAuditDetails(l.details, l.description)}
                   </td>
                   <td style={{ padding: '14px 18px', color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: '0.8rem' }}>
                     {l.ipAddress || '127.0.0.1'}

@@ -14,6 +14,32 @@ import {
 } from 'lucide-react';
 import { adminService } from '../../services';
 
+const formatAuditDetails = (details, description) => {
+  if (!details && !description) return 'System event';
+  if (typeof details === 'string') return details;
+  if (typeof details === 'object' && details !== null) {
+    if (details.from && details.to) {
+      return `Role changed from "${details.from}" to "${details.to}"`;
+    }
+    if (details.reason) {
+      return `Reason: ${details.reason}`;
+    }
+    if (details.recipientEmail) {
+      return `Invited: ${details.recipientEmail} (${details.role || 'member'})`;
+    }
+    try {
+      const entries = Object.entries(details);
+      if (entries.length === 0) return description || 'System event';
+      return entries
+        .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+        .join(', ');
+    } catch {
+      return description || 'System event';
+    }
+  }
+  return description || 'System event';
+};
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -229,7 +255,7 @@ export default function AdminDashboard() {
                       {log.action}
                     </span>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text)', fontWeight: 500 }}>
-                      {log.details || log.description || 'System event'}
+                      {formatAuditDetails(log.details, log.description)}
                     </span>
                   </div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
