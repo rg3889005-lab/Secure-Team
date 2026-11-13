@@ -73,3 +73,4 @@ projectInvitationSchema.statics.hashToken = function (rawToken) {
 };
 
 module.exports = mongoose.model('ProjectInvitation', projectInvitationSchema);
+

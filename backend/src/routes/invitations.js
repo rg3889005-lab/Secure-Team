@@ -12,3 +12,4 @@ router.post('/:invitationId/reject', invitationController.rejectInvitation);
 router.delete('/:invitationId', invitationController.cancelInvitation);
 
 module.exports = router;
+

@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 export default function AppLayout() {
   return (
@@ -27,7 +28,9 @@ export default function AppLayout() {
           flexDirection: 'column'
         }}>
           <div style={{ flex: 1 }}>
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
           <Footer compact={true} />
         </main>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Bell,
   Search,
@@ -25,6 +25,15 @@ export default function Navbar() {
   const { isDark, toggleTheme } = useTheme();
   const { socket } = useSocket();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleSwitchToUser = () => {
+    navigate('/dashboard');
+  };
+
+  const handleSwitchToAdmin = () => {
+    navigate('/admin');
+  };
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -171,11 +180,11 @@ export default function Navbar() {
 
       {/* Right Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {/* Quick Role Switcher Button */}
-        {isAdmin ? (
+        {/* Quick Role Switcher Button (Administrators Only) */}
+        {isAdmin && (
           <button
-            onClick={handleSwitchToUser}
-            title="Switch instantly to regular user view (Developer account)"
+            onClick={location.pathname.startsWith('/admin') ? handleSwitchToUser : handleSwitchToAdmin}
+            title={location.pathname.startsWith('/admin') ? 'Switch to regular user workspace' : 'Switch to administration portal'}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -184,35 +193,14 @@ export default function Navbar() {
               borderRadius: 999,
               fontSize: '0.75rem',
               fontWeight: 700,
-              background: 'rgba(99, 102, 241, 0.12)',
-              color: 'var(--primary)',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
+              background: location.pathname.startsWith('/admin') ? 'rgba(99, 102, 241, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+              color: location.pathname.startsWith('/admin') ? 'var(--primary)' : '#d97706',
+              border: location.pathname.startsWith('/admin') ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
               cursor: 'pointer',
               transition: 'all 0.2s'
             }}
           >
-            ⚡ View as User
-          </button>
-        ) : (
-          <button
-            onClick={handleSwitchToAdmin}
-            title="Switch instantly to System Administrator"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              borderRadius: 999,
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              background: 'rgba(245, 158, 11, 0.12)',
-              color: '#d97706',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            ⚡ View as Admin
+            {location.pathname.startsWith('/admin') ? '⚡ View as User' : '⚡ View as Admin'}
           </button>
         )}
 

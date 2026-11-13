@@ -39,3 +39,4 @@ projectMemberSchema.index({ user: 1, status: 1 });
 projectMemberSchema.index({ project: 1, role: 1 });
 
 module.exports = mongoose.model('ProjectMember', projectMemberSchema);
+

@@ -45,3 +45,4 @@ projectMessageSchema.index({ project: 1, createdAt: -1 });
 projectMessageSchema.index({ sender: 1 });
 
 module.exports = mongoose.model('ProjectMessage', projectMessageSchema);
+

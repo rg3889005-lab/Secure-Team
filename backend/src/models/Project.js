@@ -28,10 +28,9 @@ const projectSchema = new mongoose.Schema(
     description: { type: String, maxlength: 4000, default: '' },
     publicDescription: { type: String, maxlength: 500, default: '' },
     internalObjectives: {
-      type: String,
-      maxlength: 4000,
+      type: mongoose.Schema.Types.Mixed,
       default: '',
-      set: (v) => (Array.isArray(v) ? v.join('\n') : (v || '')),
+      set: (v) => (Array.isArray(v) ? v.join('\n') : (typeof v === 'string' ? v : '')),
     },
     category: { type: String, trim: true, default: 'General' },
     image: { type: String, default: null },
