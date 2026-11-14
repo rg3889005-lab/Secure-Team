@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import PublicNavbar from '../../components/layout/PublicNavbar';
 import Footer from '../../components/layout/Footer';
+import SEO from '../../components/common/SEO';
 
 export default function PrivacyPolicy() {
   useEffect(() => {
@@ -38,6 +39,12 @@ export default function PrivacyPolicy() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+      <SEO
+        title="Privacy Policy – SecureTeam Workspace"
+        description="Review SecureTeam's Privacy Policy explaining how user information and Google OAuth authentication data are collected, protected, and processed."
+        canonicalUrl="https://secure-team.vercel.app/privacy"
+        noindex={false}
+      />
       <PublicNavbar />
 
       <main style={{ flex: 1, padding: '40px 20px 80px', width: '100%', boxSizing: 'border-box' }}>

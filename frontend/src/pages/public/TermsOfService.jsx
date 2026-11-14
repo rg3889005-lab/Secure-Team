@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import PublicNavbar from '../../components/layout/PublicNavbar';
 import Footer from '../../components/layout/Footer';
+import SEO from '../../components/common/SEO';
 
 export default function TermsOfService() {
   useEffect(() => {
@@ -34,6 +35,12 @@ export default function TermsOfService() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+      <SEO
+        title="Terms of Service – SecureTeam Workspace"
+        description="Review the Terms of Service governing your access to and use of SecureTeam Workspace's collaborative features."
+        canonicalUrl="https://secure-team.vercel.app/terms"
+        noindex={false}
+      />
       <PublicNavbar />
 
       <main style={{ flex: 1, padding: '40px 20px 80px', width: '100%', boxSizing: 'border-box' }}>

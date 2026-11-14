@@ -2,6 +2,7 @@ import { Outlet, Link } from 'react-router-dom';
 import { Shield, Sparkles, Moon, Sun, CheckCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import Footer from '../components/layout/Footer';
+import SEO from '../components/common/SEO';
 
 export default function AuthLayout() {
   const { isDark, toggleTheme } = useTheme();
@@ -14,6 +15,7 @@ export default function AuthLayout() {
       position: 'relative',
       overflow: 'hidden'
     }}>
+      <SEO noindex={true} title="SecureTeam Authentication" />
       {/* Theme toggle in top right */}
       <div style={{ position: 'absolute', top: 20, right: 24, zIndex: 50 }}>
         <button

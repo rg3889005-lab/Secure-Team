@@ -3,10 +3,12 @@ import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ErrorBoundary from '../components/common/ErrorBoundary';
+import SEO from '../components/common/SEO';
 
 export default function AppLayout() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
+      <SEO noindex={true} title="SecureTeam Workspace" />
       <Sidebar />
       <div style={{
         marginLeft: 'var(--sidebar-w)',

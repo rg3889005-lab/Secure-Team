@@ -1,0 +1,38 @@
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /terms
+
+# Disallow private user workspace and admin routes
+Disallow: /admin
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /projects
+Disallow: /projects/
+Disallow: /tasks
+Disallow: /tasks/
+Disallow: /files
+Disallow: /files/
+Disallow: /messages
+Disallow: /messages/
+Disallow: /chat
+Disallow: /chat/
+Disallow: /invitations
+Disallow: /invitations/
+Disallow: /members
+Disallow: /members/
+Disallow: /profile
+Disallow: /profile/
+
+# Disallow auth flows
+Disallow: /login
+Disallow: /register
+Disallow: /verify-email
+Disallow: /forgot-password
+Disallow: /reset-password
+
+# Disallow backend API endpoints
+Disallow: /api/
+
+Sitemap: https://secure-team.vercel.app/sitemap.xml

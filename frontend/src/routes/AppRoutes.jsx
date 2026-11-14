@@ -11,7 +11,8 @@ import VerifyEmail from '../pages/auth/VerifyEmail';
 import ForgotPassword from '../pages/auth/ForgotPassword';
 import ResetPassword from '../pages/auth/ResetPassword';
 
-// Public Legal Pages
+// Public Pages
+import LandingPage from '../pages/public/LandingPage';
 import PrivacyPolicy from '../pages/public/PrivacyPolicy';
 import TermsOfService from '../pages/public/TermsOfService';
 
@@ -36,8 +37,8 @@ import Broadcasts from '../pages/admin/Broadcasts';
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Root redirection */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Public Landing Page */}
+      <Route path="/" element={<LandingPage />} />
 
       {/* Public / Authentication Routes */}
       <Route element={<AuthLayout />}>
