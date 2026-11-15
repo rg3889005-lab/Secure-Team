@@ -92,23 +92,24 @@ exports.sendInvitation = async (req, res, next) => {
       await ProjectInvitation.findByIdAndDelete(invitation._id);
       console.error(`[ProjectInvitation] Email dispatch failed for ${normalizedEmail}: ${emailResult.error}`);
 
-      const isMissing = emailResult.code === 'MISSING_CREDENTIALS' || emailResult.skipped;
-      let errorMsg = `Unable to send invitation email: ${emailResult.error}`;
-      if (isMissing) {
-        const missingList = emailResult.missing && emailResult.missing.length ? emailResult.missing.join(', ') : 'SMTP_USER, SMTP_PASS';
-        errorMsg = `Email delivery is currently not configured on this server. Please check SMTP settings in environment variables (${missingList}).`;
-      } else if (emailResult.code === 'EAUTH') {
-        errorMsg = 'Email delivery failed: SMTP authentication error with your email provider. Please verify your Google App Password and 2-Step Verification settings.';
-      } else if (emailResult.code === 'ETIMEDOUT' || emailResult.code === 'ECONNREFUSED') {
-        errorMsg = `Email delivery failed: Connection to SMTP server timed out (${emailResult.code}). Please verify firewall egress and port 465 SSL.`;
+      const code = emailResult.code;
+      let userFriendlyMessage = 'Email service is temporarily unavailable. Please try again.';
+
+      if (code === 'MISSING_CONFIGURATION' || code === 'MISSING_CREDENTIALS' || emailResult.skipped) {
+        userFriendlyMessage = 'Email service is not configured. Please contact the administrator.';
+      } else if (code === 'AUTH_FAILED' || code === 'EAUTH') {
+        userFriendlyMessage = 'Email authentication failed. Please check the email provider configuration.';
+      } else if (code === 'CONNECTION_FAILED' || code === 'ETIMEDOUT' || code === 'ECONNREFUSED' || code === 'ESOCKET') {
+        userFriendlyMessage = 'Email service is temporarily unavailable. Please try again.';
       }
 
       return res.status(502).json({
         success: false,
-        message: errorMsg,
-        code: emailResult.code || (isMissing ? 'MISSING_CREDENTIALS' : 'SMTP_SEND_FAILED'),
+        message: userFriendlyMessage,
+        code: code || 'SEND_FAILED',
+        provider: emailResult.provider || 'unknown',
         missing: emailResult.missing || [],
-        smtpConfigured: !isMissing,
+        details: process.env.NODE_ENV !== 'production' ? emailResult.error : undefined,
       });
     }
 
@@ -150,7 +151,7 @@ exports.sendInvitation = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: `Invitation email sent successfully to ${normalizedEmail}!`,
+      message: 'Project invitation email sent successfully!',
       data: {
         _id: invitation._id,
         recipientEmail: normalizedEmail,
@@ -229,23 +230,24 @@ exports.resendInvitation = async (req, res, next) => {
 
     if (!emailResult.success) {
       console.error(`[ProjectInvitation] Resend email failed for ${invitation.recipientEmail}: ${emailResult.error}`);
-      const isMissing = emailResult.code === 'MISSING_CREDENTIALS' || emailResult.skipped;
-      let errorMsg = `Unable to deliver invitation email: ${emailResult.error}`;
-      if (isMissing) {
-        const missingList = emailResult.missing && emailResult.missing.length ? emailResult.missing.join(', ') : 'SMTP_USER, SMTP_PASS';
-        errorMsg = `Email delivery is currently not configured on this server. Please check SMTP settings in environment variables (${missingList}).`;
-      } else if (emailResult.code === 'EAUTH') {
-        errorMsg = 'Email delivery failed: SMTP authentication error with your email provider. Please verify your Google App Password and 2-Step Verification settings.';
-      } else if (emailResult.code === 'ETIMEDOUT' || emailResult.code === 'ECONNREFUSED') {
-        errorMsg = `Email delivery failed: Connection to SMTP server timed out (${emailResult.code}). Please verify firewall egress and port 465 SSL.`;
+      const code = emailResult.code;
+      let userFriendlyMessage = 'Email service is temporarily unavailable. Please try again.';
+
+      if (code === 'MISSING_CONFIGURATION' || code === 'MISSING_CREDENTIALS' || emailResult.skipped) {
+        userFriendlyMessage = 'Email service is not configured. Please contact the administrator.';
+      } else if (code === 'AUTH_FAILED' || code === 'EAUTH') {
+        userFriendlyMessage = 'Email authentication failed. Please check the email provider configuration.';
+      } else if (code === 'CONNECTION_FAILED' || code === 'ETIMEDOUT' || code === 'ECONNREFUSED' || code === 'ESOCKET') {
+        userFriendlyMessage = 'Email service is temporarily unavailable. Please try again.';
       }
 
       return res.status(502).json({
         success: false,
-        message: errorMsg,
-        code: emailResult.code || (isMissing ? 'MISSING_CREDENTIALS' : 'SMTP_SEND_FAILED'),
+        message: userFriendlyMessage,
+        code: code || 'SEND_FAILED',
+        provider: emailResult.provider || 'unknown',
         missing: emailResult.missing || [],
-        smtpConfigured: !isMissing,
+        details: process.env.NODE_ENV !== 'production' ? emailResult.error : undefined,
       });
     }
 
@@ -268,7 +270,7 @@ exports.resendInvitation = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: `Invitation email resent successfully to ${invitation.recipientEmail}!`,
+      message: 'Project invitation email sent successfully!',
       data: {
         _id: invitation._id,
         recipientEmail: invitation.recipientEmail,
@@ -531,16 +533,16 @@ exports.cancelInvitation = async (req, res, next) => {
 };
 
 // GET /api/invitations/smtp/status
-// Diagnostic endpoint to check if SMTP is configured without exposing secrets
+// Diagnostic endpoint to check if email service is configured without exposing secrets
 exports.getSmtpStatus = async (req, res) => {
-  const status = emailService.getSmtpStatus();
+  const status = emailService.getEmailServiceStatus();
   res.json({ success: true, status });
 };
 
 // POST /api/invitations/smtp/verify
-// Diagnostic endpoint to test live SMTP connectivity
+// Diagnostic endpoint to test live email service connectivity
 exports.testSmtpConnection = async (req, res) => {
-  const result = await emailService.verifySmtp();
+  const result = await emailService.verifyEmailService();
   res.status(result.ok ? 200 : 502).json({
     success: result.ok,
     ...result,

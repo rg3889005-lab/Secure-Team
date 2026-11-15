@@ -1,6 +1,12 @@
 'use strict';
 
-require('dotenv').config();
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load environment variables from backend/.env or root .env
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
 
 const http = require('http');
 const { Server: SocketIO } = require('socket.io');
@@ -41,18 +47,19 @@ const startServer = async () => {
     console.log(`   Frontend:    ${FRONTEND_URL}`);
     console.log(`   Socket.IO:   ws://localhost:${PORT}\n`);
 
-    // Asynchronously verify SMTP configuration on boot
-    const { verifySmtp } = require('./src/services/emailService');
-    verifySmtp()
+    // Asynchronously verify email service configuration on boot
+    const { verifyEmailService } = require('./src/services/emailService');
+    verifyEmailService()
       .then((res) => {
+        const providerName = res.provider === 'gmail_api' ? 'Gmail API (HTTPS)' : 'Gmail SMTP';
         if (res.ok) {
-          console.log(`📧 SMTP Service: ${res.message}`);
+          console.log(`📧 Email Service [${providerName}]: ${res.message}`);
         } else {
-          console.warn(`📧 SMTP Service: ${res.message} [Code: ${res.reason}]`);
+          console.warn(`📧 Email Service [${providerName}]: ${res.message} [Code: ${res.reason || res.code}]`);
         }
       })
       .catch((err) => {
-        console.warn(`📧 SMTP Service: Check encountered error: ${err.message}`);
+        console.warn(`📧 Email Service Check encountered error: ${err.message}`);
       });
   });
 

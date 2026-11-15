@@ -297,13 +297,23 @@ export default function ProjectWorkspace() {
         email: cleanEmail,
         role: inviteRole,
       });
-      toast.success(res.data?.message || `Invitation email sent successfully to ${cleanEmail}!`);
+      toast.success(res.data?.message || 'Project invitation email sent successfully!');
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('member');
       fetchPendingInvites();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Unable to send invitation. Please check your email configuration or try again.';
+      const code = err.response?.data?.code;
+      let msg = err.response?.data?.message;
+      if (!msg) {
+        if (code === 'MISSING_CONFIGURATION' || code === 'MISSING_CREDENTIALS') {
+          msg = 'Email service is not configured. Please contact the administrator.';
+        } else if (code === 'AUTH_FAILED' || code === 'EAUTH') {
+          msg = 'Email authentication failed. Please check the email provider configuration.';
+        } else {
+          msg = 'Email service is temporarily unavailable. Please try again.';
+        }
+      }
       toast.error(msg);
     } finally {
       setSendingInvite(false);
@@ -315,10 +325,21 @@ export default function ProjectWorkspace() {
     setResendingInviteId(invitationId);
     try {
       const res = await invitationService.resendInvitation(invitationId);
-      toast.success(res.data?.message || `Invitation email resent successfully to ${recipientEmail}!`);
+      toast.success(res.data?.message || 'Project invitation email sent successfully!');
       fetchPendingInvites();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to resend invitation. Please try again.');
+      const code = err.response?.data?.code;
+      let msg = err.response?.data?.message;
+      if (!msg) {
+        if (code === 'MISSING_CONFIGURATION' || code === 'MISSING_CREDENTIALS') {
+          msg = 'Email service is not configured. Please contact the administrator.';
+        } else if (code === 'AUTH_FAILED' || code === 'EAUTH') {
+          msg = 'Email authentication failed. Please check the email provider configuration.';
+        } else {
+          msg = 'Email service is temporarily unavailable. Please try again.';
+        }
+      }
+      toast.error(msg);
     } finally {
       setResendingInviteId(null);
     }

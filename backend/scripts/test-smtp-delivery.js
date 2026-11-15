@@ -345,7 +345,7 @@ const runSuite = async () => {
 
       assert(sendResult.success === false, 'Send without credentials must fail');
       assert(sendResult.skipped === true, 'Skipped flag must be true');
-      assert(sendResult.code === 'MISSING_CREDENTIALS', 'Code must be MISSING_CREDENTIALS');
+      assert(sendResult.code === 'MISSING_CONFIGURATION' || sendResult.code === 'MISSING_CREDENTIALS', 'Code must be missing configuration');
       assert(sendResult.missing.includes('SMTP_USER'), 'Must report missing SMTP_USER');
       assert(sendResult.missing.includes('SMTP_PASS'), 'Must report missing SMTP_PASS');
 
@@ -437,14 +437,22 @@ const runSuite = async () => {
       if (prevSmtpHost) process.env.SMTP_HOST = prevSmtpHost;
       if (prevEmailHost) process.env.EMAIL_HOST = prevEmailHost;
 
-      // 3. Verify getSmtpStatus diagnostic object structure (never leaks raw password)
-      const statusObj = emailService.getSmtpStatus();
-      assert(statusObj.pass === undefined, 'Raw password must NEVER be exposed in getSmtpStatus');
+      // 3. Verify getEmailServiceStatus / getSmtpStatus diagnostic object structure (never leaks raw password)
+      const statusObj = emailService.getEmailServiceStatus();
+      assert(statusObj.pass === undefined, 'Raw password must NEVER be exposed in status');
       assert(typeof statusObj.configured === 'boolean', 'Configured boolean must be present');
       assert(Array.isArray(statusObj.missing), 'Missing fields array must be present');
 
+      // 4. Verify Gmail API provider detection (Render Free compatibility)
+      process.env.EMAIL_PROVIDER = 'gmail_api';
+      assert(emailService.getActiveProvider() === 'gmail_api', 'EMAIL_PROVIDER=gmail_api must select gmail_api provider');
+      const gmailApiStatus = emailService.getEmailServiceStatus();
+      assert(gmailApiStatus.provider === 'gmail_api', 'Provider in status must be gmail_api');
+      assert(gmailApiStatus.transport.includes('Port 443'), 'Transport must reflect HTTPS Port 443');
+      delete process.env.EMAIL_PROVIDER;
+
       console.log(`   Production status object: configured=${statusObj.configured}, host=${statusObj.host}, missing=${JSON.stringify(statusObj.missing)}`);
-      console.log('✅ [PASS] Test 10: Production configuration fallbacks and security boundaries verified\n');
+      console.log('✅ [PASS] Test 10: Production configuration fallbacks, Gmail API (Render Free), and security boundaries verified\n');
       passedTests++;
     }
 
