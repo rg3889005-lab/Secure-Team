@@ -92,12 +92,23 @@ exports.sendInvitation = async (req, res, next) => {
       await ProjectInvitation.findByIdAndDelete(invitation._id);
       console.error(`[ProjectInvitation] Email dispatch failed for ${normalizedEmail}: ${emailResult.error}`);
 
+      const isMissing = emailResult.code === 'MISSING_CREDENTIALS' || emailResult.skipped;
+      let errorMsg = `Unable to send invitation email: ${emailResult.error}`;
+      if (isMissing) {
+        const missingList = emailResult.missing && emailResult.missing.length ? emailResult.missing.join(', ') : 'SMTP_USER, SMTP_PASS';
+        errorMsg = `Email delivery is currently not configured on this server. Please check SMTP settings in environment variables (${missingList}).`;
+      } else if (emailResult.code === 'EAUTH') {
+        errorMsg = 'Email delivery failed: SMTP authentication error with your email provider. Please verify your Google App Password and 2-Step Verification settings.';
+      } else if (emailResult.code === 'ETIMEDOUT' || emailResult.code === 'ECONNREFUSED') {
+        errorMsg = `Email delivery failed: Connection to SMTP server timed out (${emailResult.code}). Please verify firewall egress and port 465 SSL.`;
+      }
+
       return res.status(502).json({
         success: false,
-        message: emailResult.skipped
-          ? 'Email delivery is currently not configured on this server. Please check SMTP settings in environment variables.'
-          : `Unable to send invitation email: ${emailResult.error}`,
-        smtpConfigured: !emailResult.skipped,
+        message: errorMsg,
+        code: emailResult.code || (isMissing ? 'MISSING_CREDENTIALS' : 'SMTP_SEND_FAILED'),
+        missing: emailResult.missing || [],
+        smtpConfigured: !isMissing,
       });
     }
 
@@ -218,11 +229,23 @@ exports.resendInvitation = async (req, res, next) => {
 
     if (!emailResult.success) {
       console.error(`[ProjectInvitation] Resend email failed for ${invitation.recipientEmail}: ${emailResult.error}`);
+      const isMissing = emailResult.code === 'MISSING_CREDENTIALS' || emailResult.skipped;
+      let errorMsg = `Unable to deliver invitation email: ${emailResult.error}`;
+      if (isMissing) {
+        const missingList = emailResult.missing && emailResult.missing.length ? emailResult.missing.join(', ') : 'SMTP_USER, SMTP_PASS';
+        errorMsg = `Email delivery is currently not configured on this server. Please check SMTP settings in environment variables (${missingList}).`;
+      } else if (emailResult.code === 'EAUTH') {
+        errorMsg = 'Email delivery failed: SMTP authentication error with your email provider. Please verify your Google App Password and 2-Step Verification settings.';
+      } else if (emailResult.code === 'ETIMEDOUT' || emailResult.code === 'ECONNREFUSED') {
+        errorMsg = `Email delivery failed: Connection to SMTP server timed out (${emailResult.code}). Please verify firewall egress and port 465 SSL.`;
+      }
+
       return res.status(502).json({
         success: false,
-        message: emailResult.skipped
-          ? 'Email delivery is currently not configured on this server. Please check SMTP settings in environment variables.'
-          : `Unable to deliver invitation email: ${emailResult.error}`,
+        message: errorMsg,
+        code: emailResult.code || (isMissing ? 'MISSING_CREDENTIALS' : 'SMTP_SEND_FAILED'),
+        missing: emailResult.missing || [],
+        smtpConfigured: !isMissing,
       });
     }
 
@@ -505,4 +528,21 @@ exports.cancelInvitation = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+// GET /api/invitations/smtp/status
+// Diagnostic endpoint to check if SMTP is configured without exposing secrets
+exports.getSmtpStatus = async (req, res) => {
+  const status = emailService.getSmtpStatus();
+  res.json({ success: true, status });
+};
+
+// POST /api/invitations/smtp/verify
+// Diagnostic endpoint to test live SMTP connectivity
+exports.testSmtpConnection = async (req, res) => {
+  const result = await emailService.verifySmtp();
+  res.status(result.ok ? 200 : 502).json({
+    success: result.ok,
+    ...result,
+  });
 };

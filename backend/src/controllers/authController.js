@@ -11,7 +11,12 @@ const {
   setRefreshTokenCookie,
   clearRefreshTokenCookie,
 } = require('../utils/jwt');
-const { sendVerificationEmail, sendPasswordResetEmail, sendSocialLoginReminderEmail } = require('../services/emailService');
+const {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendSocialLoginReminderEmail,
+  isEmailConfigured,
+} = require('../services/emailService');
 const { log } = require('../services/auditService');
 const { OAuth2Client } = require('google-auth-library');
 
@@ -62,7 +67,7 @@ exports.register = async (req, res, next) => {
     const code = generateSecureCode(6);
     const codeExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-    const hasEmailConfig = Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS);
+    const hasEmailConfig = isEmailConfigured();
 
     // Every new registration receives USER as default role. Never allow ADMIN during registration.
     const user = await User.create({

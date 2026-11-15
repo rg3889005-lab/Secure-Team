@@ -3,6 +3,8 @@
 const nodemailer = require('nodemailer');
 
 let transporter = null;
+let customTransporter = null;
+let lastConfigHash = null;
 
 // Determine if a credential value is empty or an unconfigured placeholder
 const isPlaceholder = (val) => {
@@ -15,41 +17,73 @@ const isPlaceholder = (val) => {
     lower.includes('your_email_account') ||
     lower.includes('your_email_app_password') ||
     lower.includes('your_google_app_password') ||
+    lower.includes('your_16_char') ||
     lower.includes('example.com')
   );
 };
 
+// Mask email addresses for safe logging and diagnostics
+const maskEmail = (email) => {
+  if (!email || typeof email !== 'string') return '';
+  const parts = email.trim().split('@');
+  if (parts.length !== 2) return '***';
+  const name = parts[0];
+  const domain = parts[1];
+  const maskedName = name.length <= 2 ? name[0] + '***' : name[0] + '***' + name[name.length - 1];
+  return `${maskedName}@${domain}`;
+};
+
 // Resolve SMTP environment configuration supporting both SMTP_* and EMAIL_* conventions
 const getSmtpConfig = () => {
-  const host = process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT, 10) || 465;
-  const user = process.env.SMTP_USER || process.env.EMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+  const host = (process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com').trim();
+  const rawPort = process.env.SMTP_PORT || process.env.EMAIL_PORT;
+  const port = rawPort ? parseInt(rawPort, 10) : (host.toLowerCase().includes('gmail') ? 465 : 587);
 
   // Auto-detect secure mode: true for port 465 (SSL/TLS direct), false for 587 (STARTTLS)
   let secure = port === 465;
-  if (process.env.SMTP_SECURE !== undefined) {
-    secure = process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === true;
+  const rawSecure = process.env.SMTP_SECURE !== undefined ? process.env.SMTP_SECURE : process.env.EMAIL_SECURE;
+  if (rawSecure !== undefined) {
+    secure = rawSecure === 'true' || rawSecure === true || rawSecure === '1';
   }
 
-  const from =
-    process.env.EMAIL_FROM ||
-    process.env.SMTP_FROM ||
-    (user ? `"Secure-Team Workspace" <${user}>` : '"Secure-Team Workspace" <noreply@secureteam.com>');
+  const rawUser = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+  const user = rawUser.trim();
 
-  const isConfigured = !isPlaceholder(user) && !isPlaceholder(pass);
+  const rawPass = process.env.SMTP_PASS || process.env.EMAIL_PASS || '';
+  // Strip all whitespaces (Google 16-character app passwords are often copied with spaces e.g. "abcd efgh ijkl mnop")
+  const pass = rawPass.replace(/\s+/g, '');
 
-  return { host, port, secure, user, pass, from, isConfigured };
+  const userIsPlaceholder = isPlaceholder(user);
+  const passIsPlaceholder = isPlaceholder(pass);
+  const isConfigured = Boolean(user && pass && !userIsPlaceholder && !passIsPlaceholder);
+
+  const missing = [];
+  if (!user || userIsPlaceholder) missing.push('SMTP_USER');
+  if (!pass || passIsPlaceholder) missing.push('SMTP_PASS');
+
+  let from = process.env.EMAIL_FROM || process.env.SMTP_FROM;
+  if (!from || isPlaceholder(from)) {
+    from = user ? `"Secure-Team Workspace" <${user}>` : '"Secure-Team Workspace" <noreply@secureteam.com>';
+  } else if (!from.includes('<') && user) {
+    from = `"${from.trim()}" <${user}>`;
+  }
+
+  return { host, port, secure, user, pass, from, isConfigured, missing };
 };
 
-const getTransporter = () => {
-  if (transporter) return transporter;
+const getTransporter = (forceNew = false) => {
+  if (customTransporter) return customTransporter;
 
   const config = getSmtpConfig();
 
   if (!config.isConfigured) {
-    console.warn('⚠️  [SMTP] Email credentials not configured or using placeholder values. Outbound email delivery is disabled.');
+    transporter = null;
     return null;
+  }
+
+  const configHash = `${config.host}:${config.port}:${config.secure}:${config.user}:${config.pass}`;
+  if (transporter && !forceNew && lastConfigHash === configHash) {
+    return transporter;
   }
 
   const transportOptions = {
@@ -60,80 +94,125 @@ const getTransporter = () => {
       user: config.user,
       pass: config.pass,
     },
+    connectionTimeout: 15000, // 15 seconds
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
     tls: {
       rejectUnauthorized: process.env.NODE_ENV === 'production',
     },
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
   };
 
-  // If using Gmail SMTP, enable service shortcut if standard host
-  if (config.host.toLowerCase().includes('gmail.com')) {
-    transportOptions.service = 'gmail';
-  }
-
   transporter = nodemailer.createTransport(transportOptions);
+  lastConfigHash = configHash;
   return transporter;
 };
 
-// Diagnostic connection test without sending an email
+// Diagnostic connection verification without sending an email
 const verifySmtp = async () => {
   const config = getSmtpConfig();
-  if (!config.isConfigured) {
+  if (!config.isConfigured && !customTransporter) {
+    const missingStr = config.missing.join(' and ');
     return {
       ok: false,
       reason: 'MISSING_CREDENTIALS',
-      message: 'SMTP credentials are not configured or contain default placeholder values. Set SMTP_USER and SMTP_PASS in .env.',
+      message: `SMTP credentials missing or unconfigured. Missing: ${missingStr}. Set valid credentials in environment variables.`,
+      missing: config.missing,
+      host: config.host,
+      port: config.port,
     };
   }
 
   try {
-    const transport = getTransporter();
+    const transport = getTransporter(true);
     if (!transport) {
-      return { ok: false, reason: 'INIT_FAILED', message: 'Failed to initialize Nodemailer transporter.' };
+      return {
+        ok: false,
+        reason: 'INIT_FAILED',
+        message: 'Failed to initialize Nodemailer transporter.',
+        missing: config.missing,
+      };
     }
 
     await transport.verify();
+    const masked = maskEmail(config.user);
     return {
       ok: true,
-      message: `SMTP connection successfully verified to ${config.host}:${config.port} as ${config.user}.`,
+      reason: 'VERIFIED',
+      message: `SMTP connection successfully verified with ${config.host}:${config.port} as ${masked}.`,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: masked,
     };
   } catch (err) {
     const code = err.code || 'UNKNOWN';
     let diagnostic = err.message;
+    let reason = code;
 
     if (code === 'EAUTH') {
+      reason = 'EAUTH';
       diagnostic =
-        'SMTP Authentication failed (EAUTH). For Gmail, you must use a 16-character Google App Password with 2-Step Verification enabled, not your normal account password.';
+        'SMTP Authentication failed (EAUTH). If using Gmail, you must generate and use a 16-character Google App Password with 2-Step Verification enabled, not your standard account password.';
     } else if (code === 'ETIMEDOUT' || code === 'ECONNREFUSED' || code === 'ESOCKET') {
-      diagnostic = `SMTP Connection failed to ${config.host}:${config.port} (${code}). Verify host/port and firewall access. Try port 465 with SMTP_SECURE=true.`;
+      reason = code;
+      diagnostic = `SMTP Connection failed to ${config.host}:${config.port} (${code}). Verify firewall egress, host, and port settings (port 465 with SMTP_SECURE=true recommended).`;
+    } else if (code === 'ENOTFOUND') {
+      reason = 'ENOTFOUND';
+      diagnostic = `SMTP host ${config.host} not found. Please check SMTP_HOST setting.`;
     }
 
     console.error(`❌ [SMTP Verify Error] [${code}] ${diagnostic}`);
-    return { ok: false, reason: code, message: diagnostic, error: err };
+    return {
+      ok: false,
+      reason,
+      message: diagnostic,
+      code,
+      host: config.host,
+      port: config.port,
+    };
   }
+};
+
+const isEmailConfigured = () => {
+  const config = getSmtpConfig();
+  return config.isConfigured;
+};
+
+const getSmtpStatus = () => {
+  const config = getSmtpConfig();
+  return {
+    configured: config.isConfigured,
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    user: config.user ? maskEmail(config.user) : null,
+    from: config.from,
+    missing: config.missing,
+  };
 };
 
 const sendEmail = async ({ to, subject, html, text }) => {
   const config = getSmtpConfig();
   const transport = getTransporter();
 
-  if (!transport || !config.isConfigured) {
-    const errorMsg = 'Email delivery skipped: SMTP credentials not configured.';
-    console.warn(`📧 [SMTP Skipped] To: ${to} | Subject: "${subject}" | Reason: Missing SMTP credentials`);
+  if (!transport || (!config.isConfigured && !customTransporter)) {
+    const missingStr = config.missing.join(', ');
+    const errorMsg = `Email delivery skipped: SMTP credentials not configured (${missingStr || 'missing'}).`;
+    console.warn(`📧 [SMTP Skipped] To: ${maskEmail(to)} | Subject: "${subject}" | Reason: Missing SMTP credentials (${missingStr})`);
     return {
       success: false,
       skipped: true,
+      code: 'MISSING_CREDENTIALS',
+      missing: config.missing,
       error: errorMsg,
     };
   }
 
   try {
-    // When sending via Gmail, the From address should match the authenticated account
-    const fromAddress = config.from.includes('<')
+    const authUser = customTransporter?.options?.auth?.user || config.user;
+    const fromAddress = config.from.includes('<') && config.from.includes('@')
       ? config.from
-      : `"Secure-Team Workspace" <${config.user}>`;
+      : (authUser ? `"Secure-Team Workspace" <${authUser}>` : '"Secure-Team Workspace" <noreply@secureteam.com>');
 
     const info = await transport.sendMail({
       from: fromAddress,
@@ -143,7 +222,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
       text: text || html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
     });
 
-    console.log(`✅ [SMTP Delivered] To: ${to} | Subject: "${subject}" | MessageId: ${info.messageId}`);
+    console.log(`✅ [SMTP Delivered] To: ${maskEmail(to)} | Subject: "${subject}" | MessageId: ${info.messageId}`);
     return {
       success: true,
       messageId: info.messageId,
@@ -152,13 +231,15 @@ const sendEmail = async ({ to, subject, html, text }) => {
     };
   } catch (err) {
     const code = err.code || 'UNKNOWN';
-    let friendlyMessage = `SMTP delivery failed to ${to}: ${err.message}`;
+    let friendlyMessage = `SMTP delivery failed to ${maskEmail(to)}: ${err.message}`;
 
     if (code === 'EAUTH') {
       friendlyMessage =
         'SMTP authentication failed. Please verify that your Gmail App Password is valid and 2-Step Verification is active.';
     } else if (code === 'ETIMEDOUT' || code === 'ECONNREFUSED') {
       friendlyMessage = `SMTP connection timed out connecting to ${config.host}:${config.port}.`;
+    } else if (code === 'EENVELOPE') {
+      friendlyMessage = `Invalid recipient email address: ${to}.`;
     }
 
     console.error(`❌ [SMTP Send Error] [${code}] ${friendlyMessage}`);
@@ -265,8 +346,8 @@ const sendSocialLoginReminderEmail = async (to, name, provider) => {
 };
 
 /**
- * Sends a responsive project invitation email matching specification.
- * Email Subject: You are invited to join a project on Secure-Team!
+ * Sends a professional responsive Secure-Team project invitation email.
+ * Includes logo, inviter name, project name, description, role, CTA button, expiration, and direct link.
  */
 const sendProjectInvitationEmail = async ({
   to,
@@ -282,6 +363,8 @@ const sendProjectInvitationEmail = async ({
   const rejectUrl = `${frontendUrl}/invitations?token=${token}&action=reject`;
 
   const roleDisplay = projectRole === 'team-leader' ? 'Team Leader' : 'Team Member';
+  const roleBadgeBg = projectRole === 'team-leader' ? '#fef3c7' : '#e0e7ff';
+  const roleBadgeColor = projectRole === 'team-leader' ? '#b45309' : '#4338ca';
 
   const html = `
     <!DOCTYPE html>
@@ -289,25 +372,32 @@ const sendProjectInvitationEmail = async ({
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Project Invitation</title>
+      <title>Project Invitation — Secure-Team Workspace</title>
+      <style>
+        @media only screen and (max-width: 600px) {
+          .email-container { width: 100% !important; padding: 16px !important; }
+          .email-card { width: 100% !important; border-radius: 12px !important; }
+          .email-cta-btn { width: 100% !important; box-sizing: border-box !important; text-align: center !important; }
+        }
+      </style>
     </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 30px 16px; color: #1e293b;">
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 32px 12px; color: #1e293b; -webkit-font-smoothing: antialiased;">
       <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
         <tr>
           <td align="center">
-            <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;" border="0" cellspacing="0" cellpadding="0">
+            <table role="presentation" class="email-card" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;" border="0" cellspacing="0" cellpadding="0">
               
-              <!-- Header Banner -->
+              <!-- Header Banner with Secure-Team Branding -->
               <tr>
                 <td style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 36px 32px; text-align: center;">
-                  <div style="display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; background: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 22px; font-weight: 800; margin-bottom: 12px;">
+                  <div style="display: inline-block; width: 50px; height: 50px; line-height: 50px; border-radius: 14px; background: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 22px; font-weight: 800; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                     ST
                   </div>
                   <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">
                     Secure-Team
                   </h1>
-                  <p style="color: rgba(255, 255, 255, 0.85); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">
-                    Secure Collaboration & Workspace Platform
+                  <p style="color: rgba(255, 255, 255, 0.88); margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">
+                    Secure Multi-Project Collaboration Platform
                   </p>
                 </td>
               </tr>
@@ -319,7 +409,7 @@ const sendProjectInvitationEmail = async ({
                     Hello,
                   </p>
                   <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #334155;">
-                    <strong style="color: #0f172a;">${inviterName || 'A Team Leader'}</strong> has invited you to join the project <strong style="color: #4f46e5;">${projectName}</strong> on <strong>Secure-Team</strong> as a <strong>${roleDisplay}</strong>.
+                    <strong style="color: #0f172a;">${inviterName || 'A Team Leader'}</strong> has invited you to collaborate on the project <strong style="color: #4f46e5;">${projectName}</strong> on <strong>Secure-Team</strong> as a <span style="background-color: ${roleBadgeBg}; color: ${roleBadgeColor}; padding: 3px 8px; border-radius: 6px; font-size: 13px; font-weight: 700;">${roleDisplay}</span>.
                   </p>
 
                   ${
@@ -330,30 +420,31 @@ const sendProjectInvitationEmail = async ({
                       : ''
                   }
 
+                  <!-- Project Details Box -->
                   <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
                     <table width="100%" border="0" cellspacing="0" cellpadding="0">
                       <tr>
-                        <td style="padding: 6px 0; font-size: 14px; color: #64748b;">Project:</td>
+                        <td style="padding: 6px 0; font-size: 14px; color: #64748b;">Project Name:</td>
                         <td align="right" style="padding: 6px 0; font-size: 14px; font-weight: 700; color: #0f172a;">${projectName}</td>
                       </tr>
                       <tr>
-                        <td style="padding: 6px 0; font-size: 14px; color: #64748b;">Your Assigned Role:</td>
-                        <td align="right" style="padding: 6px 0; font-size: 14px; font-weight: 700; color: #4f46e5;">${roleDisplay}</td>
+                        <td style="padding: 6px 0; font-size: 14px; color: #64748b;">Assigned Role:</td>
+                        <td align="right" style="padding: 6px 0; font-size: 14px; font-weight: 700; color: ${roleBadgeColor};">${roleDisplay}</td>
                       </tr>
                       <tr>
                         <td style="padding: 6px 0; font-size: 14px; color: #64748b;">Invited Email:</td>
-                        <td align="right" style="padding: 6px 0; font-size: 14px; color: #0f172a;">${to}</td>
+                        <td align="right" style="padding: 6px 0; font-size: 14px; color: #0f172a; font-family: monospace;">${to}</td>
                       </tr>
                     </table>
                   </div>
 
-                  <p style="margin: 0 0 24px 0; font-size: 15px; color: #334155; text-align: center;">
-                    Click the button below to review and accept the invitation:
+                  <p style="margin: 0 0 20px 0; font-size: 15px; color: #334155; text-align: center;">
+                    Click the button below to join the private project workspace:
                   </p>
 
                   <!-- Primary CTA Button -->
                   <div style="text-align: center; margin-bottom: 28px;">
-                    <a href="${acceptUrl}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 14px 36px; border-radius: 10px; font-weight: 700; font-size: 16px; letter-spacing: 0.02em; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);">
+                    <a href="${acceptUrl}" class="email-cta-btn" style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 15px 36px; border-radius: 10px; font-weight: 700; font-size: 16px; letter-spacing: 0.02em; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);">
                       ACCEPT INVITATION
                     </a>
                   </div>
@@ -364,23 +455,33 @@ const sendProjectInvitationEmail = async ({
                     </a>
                   </div>
 
+                  <!-- Direct Link Fallback Box -->
+                  <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px 14px; margin-bottom: 24px; word-break: break-all;">
+                    <p style="margin: 0 0 6px 0; font-size: 12px; color: #64748b; font-weight: 600;">
+                      Button not working? Copy and paste this URL into your browser:
+                    </p>
+                    <a href="${acceptUrl}" style="font-size: 12px; color: #4f46e5; text-decoration: underline;">
+                      ${acceptUrl}
+                    </a>
+                  </div>
+
                   <!-- Expiration & Disclaimer Box -->
                   <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px;">
                     <p style="margin: 0; font-size: 13px; color: #92400e; line-height: 1.5;">
                       ⏳ <strong>This invitation expires in 48 hours.</strong>
                     </p>
                     <p style="margin: 6px 0 0 0; font-size: 12px; color: #b45309; line-height: 1.4;">
-                      If you do not have an active Secure-Team account yet, you will be prompted to sign in or create an account with <strong>${to}</strong> before joining.
+                      If you do not have an active Secure-Team account yet, you will be prompted to sign in or register with <strong>${to}</strong> before accessing the project workspace.
                     </p>
                   </div>
 
                   <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.5;">
-                    If you were not expecting this invitation, you can safely ignore this email. No action will be taken without your explicit consent.
+                    If you were not expecting this invitation, you can safely ignore this email. No workspace access is granted without your explicit acceptance.
                   </p>
 
                   <p style="margin: 24px 0 0 0; font-size: 14px; color: #475569; line-height: 1.6;">
                     Regards,<br>
-                    <strong>Secure-Team Team</strong>
+                    <strong>Secure-Team Collaboration</strong>
                   </p>
                 </td>
               </tr>
@@ -392,7 +493,7 @@ const sendProjectInvitationEmail = async ({
                     © ${new Date().getFullYear()} Secure-Team Workspace. All rights reserved.
                   </p>
                   <p style="margin: 4px 0 0 0; font-size: 11px; color: #cbd5e1;">
-                    End-to-end encrypted workspace isolation and role-based access control.
+                    End-to-end workspace data isolation, cryptographic invitations, and role-based access control.
                   </p>
                 </td>
               </tr>
@@ -412,15 +513,25 @@ const sendProjectInvitationEmail = async ({
   });
 };
 
-const setTransporter = (customTransporter) => {
-  transporter = customTransporter;
+const setTransporter = (transportInstance) => {
+  customTransporter = transportInstance;
+  transporter = transportInstance;
+};
+
+const resetTransporter = () => {
+  customTransporter = null;
+  transporter = null;
+  lastConfigHash = null;
 };
 
 module.exports = {
   sendEmail,
   verifySmtp,
   getSmtpConfig,
+  getSmtpStatus,
+  isEmailConfigured,
   setTransporter,
+  resetTransporter,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendSocialLoginReminderEmail,

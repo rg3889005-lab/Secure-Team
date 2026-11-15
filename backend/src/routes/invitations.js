@@ -6,6 +6,10 @@ const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate);
 
+// SMTP configuration & diagnostic endpoints
+router.get('/smtp/status', invitationController.getSmtpStatus);
+router.post('/smtp/verify', invitationController.testSmtpConnection);
+
 router.get('/my', invitationController.getMyInvitations);
 router.post('/:invitationId/accept', invitationController.acceptInvitation);
 router.post('/:invitationId/reject', invitationController.rejectInvitation);
