@@ -5,7 +5,7 @@ const Project = require('../models/Project');
 const ProjectMember = require('../models/ProjectMember');
 const ProjectInvitation = require('../models/ProjectInvitation');
 const User = require('../models/User');
-const { sendProjectInvitationEmail } = require('../services/emailService');
+const emailService = require('../services/emailService');
 const { createNotification } = require('../services/notificationService');
 const { log } = require('../services/auditService');
 
@@ -36,7 +36,7 @@ exports.sendInvitation = async (req, res, next) => {
       });
     }
 
-    // Check if user is already a member
+    // Check if user is already an active member of this project
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser && project.isMember(existingUser._id)) {
       return res.status(409).json({
@@ -45,7 +45,7 @@ exports.sendInvitation = async (req, res, next) => {
       });
     }
 
-    // Check for existing pending invitation
+    // Check for existing pending, unexpired invitation
     const pendingInvite = await ProjectInvitation.findOne({
       project: project._id,
       recipientEmail: normalizedEmail,
@@ -60,9 +60,9 @@ exports.sendInvitation = async (req, res, next) => {
       });
     }
 
-    // Generate cryptographic token and hash
+    // Generate cryptographic token and hash (expires in 48 hours per spec)
     const { rawToken, tokenHash } = ProjectInvitation.generateToken();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
 
     const invitation = await ProjectInvitation.create({
       project: project._id,
@@ -76,14 +76,30 @@ exports.sendInvitation = async (req, res, next) => {
     });
 
     // Send email invitation through Nodemailer
-    await sendProjectInvitationEmail({
+    const emailResult = await emailService.sendProjectInvitationEmail({
       to: normalizedEmail,
       inviterName: req.user.name,
       projectName: project.name,
+      projectDescription: project.description || '',
       projectRole: assignedRole,
       token: rawToken,
       expiresAt,
     });
+
+    // If email delivery failed, roll back the newly created invitation record
+    // to preserve database and email state consistency, and allow immediate retry
+    if (!emailResult.success) {
+      await ProjectInvitation.findByIdAndDelete(invitation._id);
+      console.error(`[ProjectInvitation] Email dispatch failed for ${normalizedEmail}: ${emailResult.error}`);
+
+      return res.status(502).json({
+        success: false,
+        message: emailResult.skipped
+          ? 'Email delivery is currently not configured on this server. Please check SMTP settings in environment variables.'
+          : `Unable to send invitation email: ${emailResult.error}`,
+        smtpConfigured: !emailResult.skipped,
+      });
+    }
 
     // Notify registered recipient via real-time Socket.io and in-app Notification if account exists
     if (existingUser) {
@@ -123,12 +139,118 @@ exports.sendInvitation = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: `Invitation successfully dispatched to ${normalizedEmail}.`,
+      message: `Invitation email sent successfully to ${normalizedEmail}!`,
       data: {
         _id: invitation._id,
         recipientEmail: normalizedEmail,
         role: assignedRole,
         expiresAt,
+        status: 'pending',
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/invitations/:invitationId/resend
+// Team Leader resends invitation email with a fresh secure token & refreshed 48-hour expiration
+exports.resendInvitation = async (req, res, next) => {
+  try {
+    const { invitationId } = req.params;
+
+    const invitation = await ProjectInvitation.findById(invitationId).populate('project');
+    if (!invitation) {
+      return res.status(404).json({ success: false, message: 'Invitation not found.' });
+    }
+
+    const project = invitation.project;
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Associated project no longer exists.' });
+    }
+
+    // Only project leaders can resend invitations
+    if (!project.isLeader(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Insufficient permissions: Only Team Leaders or Project Owners can resend invitations.',
+      });
+    }
+
+    if (invitation.status === 'accepted') {
+      return res.status(400).json({
+        success: false,
+        message: 'This invitation has already been accepted and cannot be resent.',
+      });
+    }
+
+    if (invitation.status === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: 'This invitation was cancelled. Please send a new invitation instead.',
+      });
+    }
+
+    // Anti-spam rate limiting: at least 60 seconds between resends
+    const timeSinceLastUpdate = Date.now() - new Date(invitation.updatedAt).getTime();
+    if (timeSinceLastUpdate < 60000) {
+      const waitSeconds = Math.ceil((60000 - timeSinceLastUpdate) / 1000);
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${waitSeconds} second${waitSeconds === 1 ? '' : 's'} before resending another invitation to this recipient.`,
+      });
+    }
+
+    // Generate fresh secure token (invalidates previous token)
+    const { rawToken, tokenHash } = ProjectInvitation.generateToken();
+    const newExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // fresh 48 hours
+
+    // Send new invitation email through Nodemailer
+    const emailResult = await emailService.sendProjectInvitationEmail({
+      to: invitation.recipientEmail,
+      inviterName: req.user.name,
+      projectName: project.name,
+      projectDescription: project.description || '',
+      projectRole: invitation.role,
+      token: rawToken,
+      expiresAt: newExpiresAt,
+    });
+
+    if (!emailResult.success) {
+      console.error(`[ProjectInvitation] Resend email failed for ${invitation.recipientEmail}: ${emailResult.error}`);
+      return res.status(502).json({
+        success: false,
+        message: emailResult.skipped
+          ? 'Email delivery is currently not configured on this server. Please check SMTP settings in environment variables.'
+          : `Unable to deliver invitation email: ${emailResult.error}`,
+      });
+    }
+
+    // Update invitation with new token and refreshed expiration
+    invitation.tokenHash = tokenHash;
+    invitation.expiresAt = newExpiresAt;
+    invitation.status = 'pending';
+    invitation.inviter = req.user._id;
+    await invitation.save();
+
+    await log({
+      actor: req.user._id,
+      actorEmail: req.user.email,
+      action: 'project:invitation_resent',
+      resource: 'ProjectInvitation',
+      resourceId: invitation._id,
+      req,
+      details: { projectId: project._id, recipientEmail: invitation.recipientEmail },
+    });
+
+    res.json({
+      success: true,
+      message: `Invitation email resent successfully to ${invitation.recipientEmail}!`,
+      data: {
+        _id: invitation._id,
+        recipientEmail: invitation.recipientEmail,
+        role: invitation.role,
+        expiresAt: newExpiresAt,
         status: 'pending',
       },
     });
@@ -196,7 +318,7 @@ exports.acceptInvitation = async (req, res, next) => {
     if (token) {
       const tokenHash = ProjectInvitation.hashToken(token);
       invitation = await ProjectInvitation.findOne({ tokenHash });
-    } else {
+    } else if (mongoose.isValidObjectId(invitationId)) {
       invitation = await ProjectInvitation.findById(invitationId);
     }
 
@@ -214,7 +336,7 @@ exports.acceptInvitation = async (req, res, next) => {
     if (new Date() > new Date(invitation.expiresAt)) {
       invitation.status = 'expired';
       await invitation.save();
-      return res.status(400).json({ success: false, message: 'This invitation has expired.' });
+      return res.status(400).json({ success: false, message: 'This invitation has expired. Please ask the team leader to resend it.' });
     }
 
     // Security requirement: Ensure authenticated user matches invitation recipient email
@@ -222,7 +344,7 @@ exports.acceptInvitation = async (req, res, next) => {
     if (userEmail !== invitation.recipientEmail.toLowerCase().trim()) {
       return res.status(403).json({
         success: false,
-        message: `This invitation was issued to ${invitation.recipientEmail}. You are logged in as ${userEmail}.`,
+        message: `This invitation was issued to ${invitation.recipientEmail}. You are logged in as ${userEmail}. Please switch accounts to accept this invitation.`,
       });
     }
 
@@ -254,7 +376,7 @@ exports.acceptInvitation = async (req, res, next) => {
           status: 'active',
           joinedAt: new Date(),
         },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       );
     }
 
@@ -309,7 +431,15 @@ exports.acceptInvitation = async (req, res, next) => {
 exports.rejectInvitation = async (req, res, next) => {
   try {
     const { invitationId } = req.params;
-    const invitation = await ProjectInvitation.findById(invitationId);
+    const { token } = req.body;
+
+    let invitation;
+    if (token) {
+      const tokenHash = ProjectInvitation.hashToken(token);
+      invitation = await ProjectInvitation.findOne({ tokenHash });
+    } else if (mongoose.isValidObjectId(invitationId)) {
+      invitation = await ProjectInvitation.findById(invitationId);
+    }
 
     if (!invitation) {
       return res.status(404).json({ success: false, message: 'Invitation not found.' });
@@ -317,7 +447,7 @@ exports.rejectInvitation = async (req, res, next) => {
 
     const userEmail = req.user.email.toLowerCase().trim();
     if (userEmail !== invitation.recipientEmail.toLowerCase().trim()) {
-      return res.status(403).json({ success: false, message: 'Access denied.' });
+      return res.status(403).json({ success: false, message: 'Access denied: Email mismatch.' });
     }
 
     if (invitation.status !== 'pending') {
@@ -376,4 +506,3 @@ exports.cancelInvitation = async (req, res, next) => {
     next(err);
   }
 };
-

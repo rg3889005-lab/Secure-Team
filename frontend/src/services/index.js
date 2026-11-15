@@ -43,8 +43,9 @@ export const projectService = {
 export const invitationService = {
   getMyInvitations: () => api.get('/invitations/my'),
   acceptInvitation: (id, data) => api.post(`/invitations/${id}/accept`, data),
-  rejectInvitation: (id) => api.post(`/invitations/${id}/reject`),
+  rejectInvitation: (id, data) => api.post(`/invitations/${id}/reject`, data),
   cancelInvitation: (id) => api.delete(`/invitations/${id}`),
+  resendInvitation: (id) => api.post(`/invitations/${id}/resend`),
 };
 
 export const taskService = {

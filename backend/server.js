@@ -40,6 +40,20 @@ const startServer = async () => {
     console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`   Frontend:    ${FRONTEND_URL}`);
     console.log(`   Socket.IO:   ws://localhost:${PORT}\n`);
+
+    // Asynchronously verify SMTP configuration on boot
+    const { verifySmtp } = require('./src/services/emailService');
+    verifySmtp()
+      .then((res) => {
+        if (res.ok) {
+          console.log(`📧 SMTP Service: ${res.message}`);
+        } else {
+          console.warn(`📧 SMTP Service: ${res.message} [Code: ${res.reason}]`);
+        }
+      })
+      .catch((err) => {
+        console.warn(`📧 SMTP Service: Check encountered error: ${err.message}`);
+      });
   });
 
   // Graceful shutdown

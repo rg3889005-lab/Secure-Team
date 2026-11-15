@@ -31,6 +31,7 @@ const auditLogSchema = new mongoose.Schema(
         'project:member_added',
         'project:member_removed',
         'project:invitation_sent',
+        'project:invitation_resent',
         'project:invitation_accepted',
         'project:invitation_rejected',
         'project:invitation_cancelled',

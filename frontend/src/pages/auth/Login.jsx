@@ -43,8 +43,14 @@ export default function Login() {
       const user = await login(payload);
       toast.success(`Welcome back, ${user.name || 'User'}!`);
 
-      // Role-based redirection: Never trust client roles, server returns verified role
-      if (user.role === 'admin') {
+      // Role-based / origin redirection (preserves invitation flow)
+      const fromPath = location.state?.from?.pathname
+        ? `${location.state.from.pathname}${location.state.from.search || ''}`
+        : null;
+
+      if (fromPath) {
+        navigate(fromPath, { replace: true });
+      } else if (user.role === 'admin') {
         navigate('/admin', { replace: true });
       } else {
         navigate('/dashboard', { replace: true });

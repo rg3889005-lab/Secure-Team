@@ -24,11 +24,13 @@ import {
   Clock,
   ArrowLeft,
   Upload,
-  Download
+  Download,
+  RefreshCw,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
-import { projectService, taskService, fileService } from '../../services';
+import { projectService, taskService, fileService, invitationService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function ProjectWorkspace() {
@@ -70,6 +72,7 @@ export default function ProjectWorkspace() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [resendingInviteId, setResendingInviteId] = useState(null);
   const [pendingInvites, setPendingInvites] = useState([]);
 
   // Settings tab state
@@ -279,29 +282,57 @@ export default function ProjectWorkspace() {
     }
   };
 
-  // Invite Member
+  // Invite Member via Email
   const handleSendInvite = async (e) => {
     e.preventDefault();
-    if (!inviteEmail.trim()) {
-      toast.error('Email is required');
+    const cleanEmail = inviteEmail.trim().toLowerCase();
+    if (!cleanEmail || !/^\S+@\S+\.\S+$/.test(cleanEmail)) {
+      toast.error('A valid recipient email address is required.');
       return;
     }
 
     setSendingInvite(true);
     try {
       const res = await projectService.sendInvitation(projectId, {
-        email: inviteEmail.trim(),
+        email: cleanEmail,
         role: inviteRole,
       });
-      toast.success(res.data?.message || 'Invitation sent successfully!');
+      toast.success(res.data?.message || `Invitation email sent successfully to ${cleanEmail}!`);
       setShowInviteModal(false);
       setInviteEmail('');
       setInviteRole('member');
       fetchPendingInvites();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send invitation');
+      const msg = err.response?.data?.message || 'Unable to send invitation. Please check your email configuration or try again.';
+      toast.error(msg);
     } finally {
       setSendingInvite(false);
+    }
+  };
+
+  // Resend Project Invitation
+  const handleResendInvite = async (invitationId, recipientEmail) => {
+    setResendingInviteId(invitationId);
+    try {
+      const res = await invitationService.resendInvitation(invitationId);
+      toast.success(res.data?.message || `Invitation email resent successfully to ${recipientEmail}!`);
+      fetchPendingInvites();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to resend invitation. Please try again.');
+    } finally {
+      setResendingInviteId(null);
+    }
+  };
+
+  // Cancel Pending Invitation
+  const handleCancelInvite = async (invitationId, recipientEmail) => {
+    if (!window.confirm(`Are you sure you want to cancel the pending invitation for ${recipientEmail}?`)) return;
+    try {
+      const res = await invitationService.cancelInvitation(invitationId);
+      toast.success(res.data?.message || 'Invitation cancelled.');
+      fetchPendingInvites();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel invitation.');
     }
   };
 
@@ -949,34 +980,111 @@ export default function ProjectWorkspace() {
               borderRadius: 'var(--radius-lg)',
               padding: 24
             }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text)', margin: '0 0 14px 0' }}>
-                Pending Invitations ({pendingInvites.length})
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {pendingInvites.map((inv) => (
-                  <div
-                    key={inv._id}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '10px 14px',
-                      background: 'var(--bg-input)',
-                      borderRadius: 'var(--radius)',
-                      fontSize: '0.85rem'
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontWeight: 600, color: 'var(--text)' }}>{inv.recipientEmail}</span>
-                      <span style={{ marginLeft: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Role: {inv.role}
-                      </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text)', margin: 0 }}>
+                  Pending Invitations ({pendingInvites.length})
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Invitations expire after 48 hours
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {pendingInvites.map((inv) => {
+                  const isExpired = inv.expiresAt && new Date(inv.expiresAt) < new Date();
+                  const isResending = resendingInviteId === inv._id;
+
+                  return (
+                    <div
+                      key={inv._id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 12,
+                        padding: '12px 16px',
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius)',
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text)' }}>{inv.recipientEmail}</span>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            background: inv.role === 'team-leader' ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-hover)',
+                            color: inv.role === 'team-leader' ? 'var(--primary)' : 'var(--text-muted)',
+                            fontWeight: 600,
+                            textTransform: 'capitalize'
+                          }}>
+                            {inv.role === 'team-leader' ? 'Team Leader' : 'Member'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: isExpired ? 'var(--danger)' : '#f59e0b', fontWeight: 500 }}>
+                          {isExpired ? 'Expired' : 'Awaiting Acceptance (48h Token)'}
+                        </div>
+                      </div>
+
+                      {/* Action buttons: Resend & Cancel */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => handleResendInvite(inv._id, inv.recipientEmail)}
+                          disabled={isResending}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 12px',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border)',
+                            borderRadius: 'var(--radius-sm)',
+                            color: 'var(--primary)',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            cursor: isResending ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          title="Resend invitation email with a fresh 48-hour secure token"
+                        >
+                          {isResending ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <RefreshCw size={13} />
+                          )}
+                          <span>{isResending ? 'Sending...' : 'Resend Email'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCancelInvite(inv._id, inv.recipientEmail)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '6px 10px',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border)',
+                            borderRadius: 'var(--radius-sm)',
+                            color: 'var(--danger)',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          title="Cancel this invitation"
+                        >
+                          <XCircle size={13} />
+                          <span>Cancel</span>
+                        </button>
+                      </div>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 600 }}>
-                      Pending Acceptance
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1641,7 +1749,7 @@ export default function ProjectWorkspace() {
                   }}
                 >
                   {sendingInvite ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
-                  Send Invitation
+                  {sendingInvite ? 'Sending Invitation...' : 'Send Invitation'}
                 </button>
               </div>
             </form>

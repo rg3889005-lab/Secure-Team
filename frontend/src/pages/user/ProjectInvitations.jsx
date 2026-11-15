@@ -63,7 +63,7 @@ export default function ProjectInvitations() {
           }
         } else if (urlAction === 'reject') {
           toast.loading('Declining invitation...', { id: 'invite-action' });
-          const res = await invitationService.rejectInvitation(urlToken);
+          const res = await invitationService.rejectInvitation('token', { token: urlToken });
           toast.success(res.data?.message || 'Invitation declined.', { id: 'invite-action' });
           fetchInvitations();
         }
@@ -208,7 +208,7 @@ export default function ProjectInvitations() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {invitations.map((invite) => {
             const project = invite.project || {};
-            const inviter = invite.invitedBy || {};
+            const inviter = invite.inviter || invite.invitedBy || {};
             const isProcessing = processingId === invite._id;
             const expiresDate = invite.expiresAt ? new Date(invite.expiresAt) : null;
             const isExpired = expiresDate && expiresDate < new Date();

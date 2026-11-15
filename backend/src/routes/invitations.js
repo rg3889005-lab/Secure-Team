@@ -9,7 +9,7 @@ router.use(authenticate);
 router.get('/my', invitationController.getMyInvitations);
 router.post('/:invitationId/accept', invitationController.acceptInvitation);
 router.post('/:invitationId/reject', invitationController.rejectInvitation);
+router.post('/:invitationId/resend', invitationController.resendInvitation);
 router.delete('/:invitationId', invitationController.cancelInvitation);
 
 module.exports = router;
-
