@@ -10,7 +10,8 @@ import {
   Smile,
   Paperclip,
   Check,
-  CheckCheck
+  CheckCheck,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
@@ -27,6 +28,15 @@ export default function Chat() {
   const [messageText, setMessageText] = useState('');
   const [typingUsers, setTypingUsers] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -180,21 +190,24 @@ export default function Chat() {
 
   return (
     <div style={{
-      height: 'calc(100vh - 120px)',
+      height: isMobile ? 'calc(100dvh - var(--header-h) - 30px)' : 'calc(100vh - 120px)',
+      minHeight: isMobile ? 'calc(100dvh - var(--header-h) - 30px)' : 550,
       display: 'flex',
       background: 'var(--bg-card)',
       border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-xl)',
+      borderRadius: isMobile ? 'var(--radius)' : 'var(--radius-xl)',
       overflow: 'hidden',
-      boxShadow: 'var(--shadow-sm)'
+      boxShadow: 'var(--shadow-sm)',
+      width: '100%'
     }}>
       {/* Left Conversations Sidebar */}
       <div style={{
-        width: 300,
-        borderRight: '1px solid var(--border)',
-        display: 'flex',
+        width: isMobile ? '100%' : 300,
+        display: isMobile && activeConv ? 'none' : 'flex',
+        borderRight: isMobile ? 'none' : '1px solid var(--border)',
         flexDirection: 'column',
-        background: 'var(--bg-sidebar)'
+        background: 'var(--bg-sidebar)',
+        flexShrink: 0
       }}>
         {/* Search header */}
         <div style={{ padding: '16px', borderBottom: '1px solid var(--border)' }}>
@@ -281,18 +294,47 @@ export default function Chat() {
       </div>
 
       {/* Right Chat Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+      <div style={{
+        flex: 1,
+        display: isMobile && !activeConv ? 'none' : 'flex',
+        flexDirection: 'column',
+        background: 'var(--bg)',
+        width: isMobile ? '100%' : 'auto',
+        minWidth: 0
+      }}>
         {/* Chat Header */}
         <div style={{
           height: 64,
           borderBottom: '1px solid var(--border)',
           background: 'var(--bg-card)',
-          padding: '0 24px',
+          padding: isMobile ? '0 14px' : '0 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            {isMobile && (
+              <button
+                onClick={() => setActiveConv(null)}
+                style={{
+                  background: 'var(--bg-hover)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  borderRadius: 'var(--radius)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 6,
+                  minWidth: 36,
+                  minHeight: 36,
+                  flexShrink: 0
+                }}
+                aria-label="Back to channels"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            )}
             <div style={{
               width: 38,
               height: 38,
@@ -301,12 +343,21 @@ export default function Chat() {
               color: '#fff',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }}>
               <Hash size={20} />
             </div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>
+            <div style={{ minWidth: 0 }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                color: 'var(--text)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
                 {activeConv?.name || 'General Channel'}
               </h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -386,12 +437,15 @@ export default function Chat() {
         <form
           onSubmit={handleSendMessage}
           style={{
-            padding: '16px 24px',
+            padding: isMobile ? '10px 12px' : '16px 24px',
             background: 'var(--bg-card)',
             borderTop: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
-            gap: 12
+            gap: 10,
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 10
           }}
         >
           <div style={{
@@ -401,8 +455,8 @@ export default function Chat() {
             gap: 10,
             background: 'var(--bg-input)',
             border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '10px 16px'
+            borderRadius: 'var(--radius)',
+            padding: '10px 14px'
           }}>
             <input
               type="text"
@@ -414,7 +468,7 @@ export default function Chat() {
                 background: 'transparent',
                 outline: 'none',
                 width: '100%',
-                fontSize: '0.9rem',
+                fontSize: '1rem',
                 color: 'var(--text)',
                 fontFamily: 'inherit'
               }}
@@ -425,8 +479,8 @@ export default function Chat() {
             type="submit"
             disabled={!messageText.trim()}
             style={{
-              width: 44,
-              height: 44,
+              minWidth: 44,
+              minHeight: 44,
               borderRadius: 'var(--radius)',
               background: 'var(--primary)',
               color: '#fff',
@@ -437,8 +491,10 @@ export default function Chat() {
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: 'var(--shadow-glow)',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
+              flexShrink: 0
             }}
+            aria-label="Send channel message"
           >
             <Send size={18} />
           </button>

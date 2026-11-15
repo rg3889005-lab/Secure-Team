@@ -43,7 +43,7 @@ export default function LandingPage() {
           style={{
             position: 'relative',
             overflow: 'hidden',
-            padding: '80px 24px 70px',
+            padding: 'clamp(50px, 8vw, 80px) clamp(16px, 4vw, 24px)',
             borderBottom: '1px solid var(--border)',
             background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg) 100%)',
           }}
@@ -213,7 +213,7 @@ export default function LandingPage() {
         </section>
 
         {/* ─── Platform Features Grid ─────────────────────────────────────────────── */}
-        <section style={{ padding: '80px 24px', maxWidth: 1200, margin: '0 auto' }}>
+        <section style={{ padding: 'clamp(50px, 8vw, 80px) clamp(16px, 4vw, 24px)', maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 56px' }}>
             <h2
               style={{
@@ -235,7 +235,7 @@ export default function LandingPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
               gap: 24,
             }}
           >
@@ -460,7 +460,7 @@ export default function LandingPage() {
         {/* ─── Security Architecture Highlights ───────────────────────────────────── */}
         <section
           style={{
-            padding: '70px 24px',
+            padding: 'clamp(40px, 6vw, 70px) clamp(16px, 4vw, 24px)',
             background: 'var(--bg-card)',
             borderTop: '1px solid var(--border)',
             borderBottom: '1px solid var(--border)',
@@ -497,7 +497,7 @@ export default function LandingPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
                 gap: 20,
                 textAlign: 'left',
               }}
@@ -570,7 +570,7 @@ export default function LandingPage() {
         </section>
 
         {/* ─── Bottom CTA Banner ──────────────────────────────────────────────────── */}
-        <section style={{ padding: '80px 24px', textAlign: 'center' }}>
+        <section style={{ padding: 'clamp(50px, 8vw, 80px) clamp(16px, 4vw, 24px)', textAlign: 'center' }}>
           <div
             style={{
               maxWidth: 800,
@@ -578,7 +578,7 @@ export default function LandingPage() {
               background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.08) 100%)',
               border: '1px solid rgba(99, 102, 241, 0.25)',
               borderRadius: 'var(--radius-xl)',
-              padding: '48px 32px',
+              padding: 'clamp(28px, 6vw, 48px) clamp(16px, 4vw, 32px)',
             }}
           >
             <h2

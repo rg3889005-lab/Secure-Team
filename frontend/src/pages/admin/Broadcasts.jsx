@@ -64,13 +64,13 @@ export default function Broadcasts() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 24 }}>
         {/* Broadcast Composer */}
         <div style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-xl)',
-          padding: '28px',
+          padding: 'clamp(18px, 4vw, 28px)',
           boxShadow: 'var(--shadow-sm)'
         }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 18px 0', color: 'var(--text)' }}>
@@ -128,7 +128,7 @@ export default function Broadcasts() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
                   Alert Level
@@ -211,6 +211,7 @@ export default function Broadcasts() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 8,
+                minHeight: 44,
                 padding: '12px',
                 background: 'var(--primary)',
                 color: '#fff',
@@ -235,7 +236,7 @@ export default function Broadcasts() {
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-xl)',
-            padding: '28px',
+            padding: 'clamp(18px, 4vw, 28px)',
             boxShadow: 'var(--shadow-sm)'
           }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--text)' }}>

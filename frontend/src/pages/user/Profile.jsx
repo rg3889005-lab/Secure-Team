@@ -78,10 +78,11 @@ export default function Profile() {
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius-xl)',
-        padding: '28px',
+        padding: 'clamp(18px, 4vw, 28px)',
         display: 'flex',
         alignItems: 'center',
-        gap: 24,
+        flexWrap: 'wrap',
+        gap: 20,
         boxShadow: 'var(--shadow-sm)'
       }}>
         <div style={{
@@ -124,13 +125,13 @@ export default function Profile() {
       </div>
 
       {/* Forms Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 24 }}>
         {/* Profile Information Form */}
         <div style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-xl)',
-          padding: '28px',
+          padding: 'clamp(18px, 4vw, 28px)',
           boxShadow: 'var(--shadow-sm)'
         }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 18px 0', color: 'var(--text)' }}>
@@ -217,6 +218,7 @@ export default function Profile() {
               disabled={profileLoading}
               style={{
                 alignSelf: 'flex-start',
+                minHeight: 44,
                 padding: '10px 20px',
                 background: 'var(--primary)',
                 color: '#fff',
@@ -239,7 +241,7 @@ export default function Profile() {
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-xl)',
-          padding: '28px',
+          padding: 'clamp(18px, 4vw, 28px)',
           boxShadow: 'var(--shadow-sm)'
         }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 18px 0', color: 'var(--text)' }}>
@@ -324,6 +326,7 @@ export default function Profile() {
               disabled={passLoading}
               style={{
                 alignSelf: 'flex-start',
+                minHeight: 44,
                 padding: '10px 20px',
                 background: 'var(--bg-hover)',
                 color: 'var(--text)',

@@ -14,7 +14,8 @@ import {
   X,
   Clock,
   Sparkles,
-  Lock
+  Lock,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
@@ -35,6 +36,15 @@ export default function DirectMessages() {
   const [sendingMsg, setSendingMsg] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [typingName, setTypingName] = useState(null);
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // New Chat Modal
   const [showNewChatModal, setShowNewChatModal] = useState(false);
@@ -274,21 +284,23 @@ export default function DirectMessages() {
   return (
     <div style={{
       display: 'flex',
-      height: 'calc(100vh - 140px)',
-      minHeight: 550,
+      height: isMobile ? 'calc(100dvh - var(--header-h) - 30px)' : 'calc(100vh - 140px)',
+      minHeight: isMobile ? 'calc(100dvh - var(--header-h) - 30px)' : 550,
       background: 'var(--bg-card)',
-      borderRadius: 'var(--radius-xl)',
+      borderRadius: isMobile ? 'var(--radius)' : 'var(--radius-xl)',
       border: '1px solid var(--border)',
       overflow: 'hidden',
-      boxShadow: 'var(--shadow-sm)'
+      boxShadow: 'var(--shadow-sm)',
+      width: '100%'
     }}>
       {/* Left Sidebar: Conversations List */}
       <div style={{
-        width: 340,
-        borderRight: '1px solid var(--border)',
-        display: 'flex',
+        width: isMobile ? '100%' : 340,
+        display: isMobile && activeConv ? 'none' : 'flex',
+        borderRight: isMobile ? 'none' : '1px solid var(--border)',
         flexDirection: 'column',
-        background: 'var(--bg-sidebar)'
+        background: 'var(--bg-sidebar)',
+        flexShrink: 0
       }}>
         {/* Header & New Message Button */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -478,23 +490,51 @@ export default function DirectMessages() {
       </div>
 
       {/* Right Main Pane: Active Conversation */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-card)' }}>
+      <div style={{
+        flex: 1,
+        display: isMobile && !activeConv ? 'none' : 'flex',
+        flexDirection: 'column',
+        background: 'var(--bg-card)',
+        width: isMobile ? '100%' : 'auto',
+        minWidth: 0
+      }}>
         {activeConv && activeOtherUser ? (
           <>
             {/* Header */}
             <div style={{
-              padding: '14px 24px',
+              padding: isMobile ? '10px 14px' : '14px 24px',
               borderBottom: '1px solid var(--border)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               background: 'var(--bg-input)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                {isMobile && (
+                  <button
+                    onClick={() => setActiveConv(null)}
+                    style={{
+                      background: 'var(--bg-hover)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text)',
+                      borderRadius: 'var(--radius)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 6,
+                      minWidth: 36,
+                      minHeight: 36
+                    }}
+                    aria-label="Back to conversations list"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                )}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
                   <div style={{
-                    width: 38,
-                    height: 38,
+                    width: 36,
+                    height: 36,
                     borderRadius: '50%',
                     background: 'linear-gradient(135deg, #6366f1, #a855f7)',
                     color: '#fff',
@@ -502,7 +542,7 @@ export default function DirectMessages() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: 700,
-                    fontSize: '0.9rem'
+                    fontSize: '0.85rem'
                   }}>
                     {activeOtherUser.name?.charAt(0) || 'U'}
                   </div>
@@ -520,19 +560,27 @@ export default function DirectMessages() {
                   )}
                 </div>
 
-                <div>
-                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    margin: 0,
+                    color: 'var(--text)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
                     {activeOtherUser.name}
                   </h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                     <span>{activeIsOnline ? 'Active Now' : 'Offline'}</span>
-                    <span>•</span>
-                    <span>{activeOtherUser.email}</span>
+                    <span className="show-desktop">•</span>
+                    <span className="show-desktop">{activeOtherUser.email}</span>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <div className="show-desktop" style={{ alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 <Lock size={12} color="var(--primary)" />
                 <span>1-to-1 Direct Messaging</span>
               </div>
@@ -617,11 +665,14 @@ export default function DirectMessages() {
             <form
               onSubmit={handleSendMessage}
               style={{
-                padding: 16,
+                padding: isMobile ? '10px 12px' : 16,
                 borderTop: '1px solid var(--border)',
                 display: 'flex',
-                gap: 12,
-                background: 'var(--bg-card)'
+                gap: 10,
+                background: 'var(--bg-card)',
+                position: 'sticky',
+                bottom: 0,
+                zIndex: 10
               }}
             >
               <input
@@ -631,13 +682,14 @@ export default function DirectMessages() {
                 onChange={handleInputChange}
                 style={{
                   flex: 1,
-                  padding: '11px 16px',
+                  padding: '11px 14px',
                   background: 'var(--bg-input)',
                   border: '1px solid var(--border)',
                   borderRadius: 'var(--radius)',
                   color: 'var(--text)',
-                  fontSize: '0.875rem',
-                  outline: 'none'
+                  fontSize: '1rem',
+                  outline: 'none',
+                  minHeight: 44
                 }}
               />
               <button
@@ -646,8 +698,9 @@ export default function DirectMessages() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: 6,
-                  padding: '10px 20px',
+                  padding: '10px 18px',
                   background: 'var(--primary)',
                   color: '#fff',
                   border: 'none',
@@ -655,10 +708,14 @@ export default function DirectMessages() {
                   fontWeight: 600,
                   fontSize: '0.875rem',
                   cursor: 'pointer',
-                  opacity: messageText.trim() ? 1 : 0.6
+                  opacity: messageText.trim() ? 1 : 0.6,
+                  minHeight: 44,
+                  minWidth: 44,
+                  flexShrink: 0
                 }}
+                aria-label="Send direct message"
               >
-                <Send size={16} /> Send
+                <Send size={16} /> <span className="show-desktop">Send</span>
               </button>
             </form>
           </>

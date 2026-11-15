@@ -55,7 +55,7 @@ export default function PrivacyPolicy() {
             background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #0f172a 100%)',
             color: '#fff',
             borderRadius: 'var(--radius-xl)',
-            padding: '48px 36px',
+            padding: 'clamp(28px, 6vw, 48px) clamp(16px, 4vw, 36px)',
             marginBottom: 36,
             boxShadow: 'var(--shadow-lg)',
             position: 'relative',
@@ -78,7 +78,7 @@ export default function PrivacyPolicy() {
               <Shield size={16} /> PRIVACY & DATA GOVERNANCE
             </div>
             <h1 style={{
-              fontSize: '2.5rem',
+              fontSize: 'clamp(1.75rem, 5vw, 2.5rem)',
               fontWeight: 800,
               letterSpacing: '-0.03em',
               margin: '0 0 12px 0',

@@ -21,15 +21,15 @@ export default function PublicNavbar() {
       <div style={{
         maxWidth: 1200,
         margin: '0 auto',
-        padding: '0 24px',
+        padding: '0 16px',
         height: 'var(--header-h)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 16
+        gap: 12
       }}>
         {/* Brand */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
           <div style={{
             width: 36,
             height: 36,
@@ -57,15 +57,15 @@ export default function PublicNavbar() {
             }}>
               SecureTeam <Sparkles size={12} color="#f59e0b" />
             </span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+            <span className="show-desktop" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>
               Enterprise Workspace
             </span>
           </div>
         </Link>
 
         {/* Center / Right Nav Items */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <nav className="show-desktop" style={{ alignItems: 'center', gap: 18 }}>
             <Link
               to="/privacy"
               style={{
@@ -109,6 +109,8 @@ export default function PublicNavbar() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              minWidth: 40,
+              minHeight: 40
             }}
             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           >
@@ -125,18 +127,19 @@ export default function PublicNavbar() {
                 gap: 6,
                 background: 'var(--primary)',
                 color: '#fff',
-                padding: '8px 16px',
+                padding: '8px 14px',
                 borderRadius: 'var(--radius)',
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 textDecoration: 'none',
                 boxShadow: 'var(--shadow-glow)',
+                minHeight: 40
               }}
             >
-              <LayoutDashboard size={15} /> Open Workspace
+              <LayoutDashboard size={15} /> Workspace
             </Link>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Link
                 to="/login"
                 style={{
@@ -144,8 +147,11 @@ export default function PublicNavbar() {
                   fontWeight: 600,
                   color: 'var(--text)',
                   textDecoration: 'none',
-                  padding: '8px 14px',
+                  padding: '8px 10px',
                   borderRadius: 'var(--radius)',
+                  minHeight: 40,
+                  display: 'inline-flex',
+                  alignItems: 'center'
                 }}
               >
                 Sign In
@@ -155,15 +161,17 @@ export default function PublicNavbar() {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 4,
                   background: 'var(--primary)',
                   color: '#fff',
-                  padding: '8px 16px',
+                  padding: '8px 14px',
                   borderRadius: 'var(--radius)',
                   fontSize: '0.85rem',
                   fontWeight: 600,
                   textDecoration: 'none',
                   boxShadow: 'var(--shadow-glow)',
+                  minHeight: 40,
+                  whiteSpace: 'nowrap'
                 }}
               >
                 Get Started <ArrowRight size={14} />

@@ -14,12 +14,13 @@ import {
   Wifi,
   WifiOff,
   Sparkles,
-  Inbox
+  Inbox,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen = false, onClose }) {
   const { user, isAdmin } = useAuth();
   const { connected } = useSocket();
 
@@ -42,60 +43,80 @@ export default function Sidebar() {
     { name: 'Broadcasts', path: '/admin/broadcasts', icon: Radio },
   ];
 
+  const handleLinkClick = () => {
+    if (onClose) onClose();
+  };
+
   return (
-    <aside style={{
-      width: 'var(--sidebar-w)',
-      height: '100vh',
-      background: 'var(--bg-sidebar)',
-      borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      zIndex: 50,
-      transition: 'all 0.2s ease-in-out'
-    }}>
+    <aside
+      className={`sidebar ${mobileOpen ? 'open' : ''}`}
+      aria-label="Sidebar navigation"
+    >
       {/* Brand Header */}
       <div style={{
         height: 'var(--header-h)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 20px',
-        gap: 12,
+        justifyContent: 'space-between',
+        padding: '0 18px',
         borderBottom: '1px solid var(--border)'
       }}>
-        <div style={{
-          width: 36,
-          height: 36,
-          borderRadius: 'var(--radius)',
-          background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(99, 102, 241, 0.35)',
-          color: '#fff',
-          fontWeight: 800,
-          fontSize: '1rem'
-        }}>
-          ST
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{
-            fontSize: '0.95rem',
-            fontWeight: 700,
-            color: 'var(--text)',
-            letterSpacing: '-0.02em',
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: 'var(--radius)',
+            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
             display: 'flex',
             alignItems: 'center',
-            gap: 4
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.35)',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: '1rem',
+            flexShrink: 0
           }}>
-            SecureTeam <Sparkles size={12} color="#f59e0b" />
-          </span>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-            Enterprise Workspace
-          </span>
+            ST
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              color: 'var(--text)',
+              letterSpacing: '-0.02em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}>
+              SecureTeam <Sparkles size={12} color="#f59e0b" />
+            </span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+              Enterprise Workspace
+            </span>
+          </div>
         </div>
+
+        {/* Mobile Close Button */}
+        <button
+          onClick={onClose}
+          className="mobile-menu-btn hide-desktop"
+          style={{
+            padding: 8,
+            minWidth: 40,
+            minHeight: 40,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--bg-hover)',
+            border: 'none',
+            borderRadius: 'var(--radius-sm)',
+            color: 'var(--text-muted)',
+            cursor: 'pointer'
+          }}
+          aria-label="Close navigation drawer"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       {/* Navigation Sections */}
@@ -105,7 +126,7 @@ export default function Sidebar() {
         padding: '16px 12px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 24
+        gap: 20
       }}>
         {/* Workspace Menu */}
         <div>
@@ -127,19 +148,21 @@ export default function Sidebar() {
                   key={item.path}
                   to={item.path}
                   end={item.path === '/dashboard'}
+                  onClick={handleLinkClick}
                   className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                   style={({ isActive }) => ({
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
-                    padding: '9px 12px',
+                    padding: '11px 12px',
                     borderRadius: 'var(--radius)',
                     fontSize: '0.875rem',
                     fontWeight: isActive ? 600 : 500,
                     textDecoration: 'none',
                     color: isActive ? 'var(--primary)' : 'var(--text-muted)',
                     background: isActive ? 'var(--primary-light)' : 'transparent',
-                    transition: 'all 0.15s ease'
+                    transition: 'all 0.15s ease',
+                    minHeight: 44
                   })}
                 >
                   <Icon size={18} />
@@ -174,19 +197,21 @@ export default function Sidebar() {
                     key={item.path}
                     to={item.path}
                     end={item.exact}
+                    onClick={handleLinkClick}
                     className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                     style={({ isActive }) => ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 12,
-                      padding: '9px 12px',
+                      padding: '11px 12px',
                       borderRadius: 'var(--radius)',
                       fontSize: '0.875rem',
                       fontWeight: isActive ? 600 : 500,
                       textDecoration: 'none',
                       color: isActive ? 'var(--primary)' : 'var(--text-muted)',
                       background: isActive ? 'var(--primary-light)' : 'transparent',
-                      transition: 'all 0.15s ease'
+                      transition: 'all 0.15s ease',
+                      minHeight: 44
                     })}
                   >
                     <Icon size={18} />

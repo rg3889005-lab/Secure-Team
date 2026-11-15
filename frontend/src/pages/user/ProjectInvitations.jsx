@@ -220,16 +220,16 @@ export default function ProjectInvitations() {
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border)',
                   borderRadius: 'var(--radius-lg)',
-                  padding: '24px',
+                  padding: '20px 18px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   flexWrap: 'wrap',
-                  gap: 20,
+                  gap: 16,
                   boxShadow: 'var(--shadow-sm)'
                 }}
               >
-                <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flex: 1, minWidth: 280 }}>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flex: 1, minWidth: 'min(100%, 240px)' }}>
                   <div style={{
                     width: 48,
                     height: 48,
@@ -294,22 +294,24 @@ export default function ProjectInvitations() {
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', width: 'auto' }}>
                   <button
                     onClick={() => handleReject(invite._id)}
                     disabled={isProcessing}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       gap: 6,
-                      padding: '9px 16px',
+                      padding: '10px 16px',
                       background: 'transparent',
                       color: 'var(--text-muted)',
                       border: '1px solid var(--border)',
                       borderRadius: 'var(--radius)',
                       fontSize: '0.85rem',
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      minHeight: 44
                     }}
                   >
                     <XCircle size={16} /> Decline
@@ -321,8 +323,9 @@ export default function ProjectInvitations() {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       gap: 6,
-                      padding: '9px 18px',
+                      padding: '10px 18px',
                       background: isExpired ? 'var(--text-light)' : 'var(--primary)',
                       color: '#fff',
                       border: 'none',
@@ -330,7 +333,8 @@ export default function ProjectInvitations() {
                       fontSize: '0.85rem',
                       fontWeight: 600,
                       cursor: isExpired ? 'not-allowed' : 'pointer',
-                      boxShadow: isExpired ? 'none' : 'var(--shadow-glow)'
+                      boxShadow: isExpired ? 'none' : 'var(--shadow-glow)',
+                      minHeight: 44
                     }}
                   >
                     {isProcessing ? (

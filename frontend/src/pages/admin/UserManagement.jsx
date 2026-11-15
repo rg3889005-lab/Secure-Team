@@ -128,7 +128,7 @@ export default function UserManagement() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="mobile-scroll-tabs" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
           {['ALL', 'admin', 'manager', 'member'].map((role) => (
             <button
               key={role}
@@ -152,11 +152,12 @@ export default function UserManagement() {
       </div>
 
       {/* Users Table */}
-      <div style={{
+      <div className="table-responsive" style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)',
-        overflow: 'hidden',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
         boxShadow: 'var(--shadow-sm)'
       }}>
         {loading ? (

@@ -106,7 +106,7 @@ export default function MembersDirectory() {
           borderRadius: 'var(--radius)',
           padding: '8px 14px',
           flex: 1,
-          minWidth: 240
+          minWidth: 'min(100%, 220px)'
         }}>
           <Search size={18} style={{ color: 'var(--text-muted)' }} />
           <input
@@ -126,12 +126,13 @@ export default function MembersDirectory() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {['ALL', 'ADMIN', 'USER'].map((r) => (
             <button
               key={r}
               onClick={() => setRoleFilter(r)}
               style={{
+                minHeight: 38,
                 padding: '8px 14px',
                 borderRadius: 'var(--radius)',
                 border: '1px solid var(--border)',
@@ -168,7 +169,7 @@ export default function MembersDirectory() {
           <p style={{ margin: 0, fontSize: '0.85rem' }}>Try adjusting your search query.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: 20 }}>
           {filteredUsers.map((u) => {
             const isMe = u._id === user?._id;
             const online = isUserOnline(u._id);
@@ -271,6 +272,7 @@ export default function MembersDirectory() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: 6,
+                        minHeight: 42,
                         padding: '8px 12px',
                         background: 'var(--primary)',
                         color: '#fff',
@@ -293,6 +295,7 @@ export default function MembersDirectory() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: 6,
+                      minHeight: 42,
                       padding: '8px 12px',
                       background: 'var(--bg-input)',
                       color: 'var(--text)',
@@ -331,10 +334,11 @@ export default function MembersDirectory() {
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-xl)',
-            width: '100%',
-            maxWidth: 400,
-            padding: 28,
-            boxShadow: 'var(--shadow-lg)'
+            width: 'min(400px, calc(100vw - 24px))',
+            maxWidth: '100%',
+            padding: 24,
+            boxShadow: 'var(--shadow-lg)',
+            boxSizing: 'border-box'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text)' }}>

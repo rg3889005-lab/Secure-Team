@@ -155,8 +155,8 @@ export default function AdminDashboard() {
       {/* KPI Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: 16
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+        gap: 12
       }}>
         {[
           { label: 'Registered Users', value: stats.totalUsers, icon: Users, color: '#6366f1' },
@@ -206,7 +206,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Grid: Recent Logs & Navigation Shortcuts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
+      <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
         {/* Recent Audit Events */}
         <div style={{
           background: 'var(--bg-card)',

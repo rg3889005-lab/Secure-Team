@@ -98,7 +98,7 @@ export default function Dashboard() {
         background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%)',
         color: '#fff',
         borderRadius: 'var(--radius-xl)',
-        padding: '36px 40px',
+        padding: 'clamp(24px, 4vw, 36px) clamp(18px, 4vw, 40px)',
         position: 'relative',
         overflow: 'hidden',
         boxShadow: 'var(--shadow-lg)'
@@ -131,11 +131,11 @@ export default function Dashboard() {
             <Sparkles size={13} /> SECURE WORKSPACE HUB
           </div>
           <h1 style={{
-            fontSize: '2rem',
+            fontSize: 'clamp(1.35rem, 3.5vw, 2rem)',
             fontWeight: 800,
             margin: '0 0 10px 0',
             letterSpacing: '-0.02em',
-            lineHeight: 1.2
+            lineHeight: 1.25
           }}>
             Welcome back, {user?.name?.split(' ')[0] || 'Team Member'} 👋
           </h1>
@@ -193,8 +193,8 @@ export default function Dashboard() {
       {/* KPI Metrics Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: 16
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+        gap: 12
       }}>
         {[
           { label: 'Active Projects', value: stats.totalProjects, icon: FolderKanban, color: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)' },

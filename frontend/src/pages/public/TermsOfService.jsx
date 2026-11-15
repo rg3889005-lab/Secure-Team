@@ -50,7 +50,7 @@ export default function TermsOfService() {
             background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%)',
             color: '#fff',
             borderRadius: 'var(--radius-xl)',
-            padding: '48px 36px',
+            padding: 'clamp(28px, 6vw, 48px) clamp(16px, 4vw, 36px)',
             marginBottom: 36,
             boxShadow: 'var(--shadow-lg)',
             position: 'relative',
@@ -73,7 +73,7 @@ export default function TermsOfService() {
               <Scale size={16} /> TERMS OF SERVICE & USER AGREEMENT
             </div>
             <h1 style={{
-              fontSize: '2.5rem',
+              fontSize: 'clamp(1.75rem, 5vw, 2.5rem)',
               fontWeight: 800,
               letterSpacing: '-0.03em',
               margin: '0 0 12px 0',

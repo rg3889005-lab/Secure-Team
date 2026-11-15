@@ -298,7 +298,7 @@ export default function Projects() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="mobile-scroll-tabs" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
           {['ALL', 'ENGINEERING', 'DESIGN', 'MARKETING', 'SECURITY', 'RESEARCH'].map((cat) => (
             <button
               key={cat}
@@ -366,7 +366,7 @@ export default function Projects() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
           {filteredProjects.map((p) => {
             // Find role in project
             const memberObj = p.members?.find((m) => (m.user?._id || m.user) === user?._id);
@@ -518,23 +518,39 @@ export default function Projects() {
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-xl)',
-            width: '100%',
+            width: 'min(580px, calc(100vw - 24px))',
             maxWidth: 580,
-            padding: '28px 32px',
+            padding: '24px 20px',
             boxShadow: 'var(--shadow-lg)',
             maxHeight: '90vh',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            boxSizing: 'border-box'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text)' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text)' }}>
                   Create Project Workspace
                 </h3>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   You will automatically be assigned as Project Owner and Team Leader
                 </p>
               </div>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  padding: 8,
+                  minWidth: 40,
+                  minHeight: 40,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                aria-label="Close modal"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -556,15 +572,16 @@ export default function Projects() {
                     background: 'var(--bg-input)',
                     border: '1px solid var(--border)',
                     borderRadius: 'var(--radius)',
-                    fontSize: '0.9rem',
+                    fontSize: '1rem',
                     color: 'var(--text)',
                     boxSizing: 'border-box',
-                    outline: 'none'
+                    outline: 'none',
+                    minHeight: 44
                   }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
                     Category

@@ -703,14 +703,18 @@ export default function ProjectWorkspace() {
         </div>
 
         {/* Tab Navigation */}
-        <div style={{
-          display: 'flex',
-          gap: 6,
-          marginTop: 24,
-          borderTop: '1px solid var(--border)',
-          paddingTop: 16,
-          overflowX: 'auto'
-        }}>
+        <div
+          className="mobile-scroll-tabs"
+          style={{
+            display: 'flex',
+            gap: 6,
+            marginTop: 20,
+            borderTop: '1px solid var(--border)',
+            paddingTop: 14,
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
           {[
             { id: 'overview', label: 'Overview', icon: FolderKanban },
             { id: 'members', label: `Members (${project.members?.length || 1})`, icon: Users },
@@ -729,7 +733,7 @@ export default function ProjectWorkspace() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  padding: '8px 14px',
+                  padding: '9px 14px',
                   borderRadius: 'var(--radius)',
                   border: 'none',
                   background: isActive ? 'var(--primary-light)' : 'transparent',
@@ -738,7 +742,9 @@ export default function ProjectWorkspace() {
                   fontSize: '0.85rem',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
-                  transition: 'all 0.15s ease'
+                  transition: 'all 0.15s ease',
+                  minHeight: 40,
+                  flexShrink: 0
                 }}
               >
                 <Icon size={16} /> {tab.label}
@@ -750,7 +756,7 @@ export default function ProjectWorkspace() {
 
       {/* Tab 1: Overview */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 16 }}>
           {/* Internal Objectives Card */}
           <div style={{
             background: 'var(--bg-card)',
@@ -1099,17 +1105,21 @@ export default function ProjectWorkspace() {
           borderRadius: 'var(--radius-lg)',
           display: 'flex',
           flexDirection: 'column',
-          height: 600,
-          overflow: 'hidden'
+          height: 'min(620px, calc(100dvh - 200px))',
+          minHeight: 380,
+          overflow: 'hidden',
+          width: '100%'
         }}>
           {/* Chat Room Banner */}
           <div style={{
-            padding: '12px 20px',
+            padding: '12px 18px',
             borderBottom: '1px solid var(--border)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'var(--bg-input)'
+            background: 'var(--bg-input)',
+            flexWrap: 'wrap',
+            gap: 6
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Lock size={14} color="var(--primary)" />
@@ -1118,7 +1128,7 @@ export default function ProjectWorkspace() {
               </span>
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Messages broadcast strictly to project members only
+              Encrypted to project members
             </span>
           </div>
 
@@ -1126,10 +1136,10 @@ export default function ProjectWorkspace() {
           <div style={{
             flex: 1,
             overflowY: 'auto',
-            padding: 20,
+            padding: '16px 14px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 14
+            gap: 12
           }}>
             {messages.length === 0 ? (
               <div style={{ textAlign: 'center', margin: 'auto', color: 'var(--text-muted)' }}>
@@ -1166,8 +1176,8 @@ export default function ProjectWorkspace() {
                     </div>
 
                     <div style={{
-                      maxWidth: '75%',
-                      padding: '10px 16px',
+                      maxWidth: '85%',
+                      padding: '10px 14px',
                       borderRadius: 'var(--radius)',
                       background: isMe ? 'var(--primary)' : 'var(--bg-input)',
                       color: isMe ? '#fff' : 'var(--text)',
@@ -1187,7 +1197,7 @@ export default function ProjectWorkspace() {
 
           {/* Typing Indicator */}
           {typingUsers.size > 0 && (
-            <div style={{ padding: '4px 20px', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            <div style={{ padding: '4px 18px', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
               {Array.from(typingUsers).join(', ')} is typing...
             </div>
           )}
@@ -1196,16 +1206,19 @@ export default function ProjectWorkspace() {
           <form
             onSubmit={handleSendMessage}
             style={{
-              padding: 16,
+              padding: '10px 14px',
               borderTop: '1px solid var(--border)',
               display: 'flex',
-              gap: 10,
-              background: 'var(--bg-card)'
+              gap: 8,
+              background: 'var(--bg-card)',
+              position: 'sticky',
+              bottom: 0,
+              zIndex: 10
             }}
           >
             <input
               type="text"
-              placeholder="Send a private message to the project room..."
+              placeholder="Send a message to project room..."
               value={chatInput}
               onChange={handleChatInputChange}
               style={{
@@ -1215,8 +1228,9 @@ export default function ProjectWorkspace() {
                 border: '1px solid var(--border)',
                 borderRadius: 'var(--radius)',
                 color: 'var(--text)',
-                fontSize: '0.875rem',
-                outline: 'none'
+                fontSize: '1rem',
+                outline: 'none',
+                minHeight: 44
               }}
             />
             <button
@@ -1225,8 +1239,9 @@ export default function ProjectWorkspace() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: 6,
-                padding: '10px 18px',
+                padding: '10px 16px',
                 background: 'var(--primary)',
                 color: '#fff',
                 border: 'none',
@@ -1234,10 +1249,14 @@ export default function ProjectWorkspace() {
                 fontWeight: 600,
                 fontSize: '0.85rem',
                 cursor: 'pointer',
-                opacity: chatInput.trim() ? 1 : 0.6
+                opacity: chatInput.trim() ? 1 : 0.6,
+                minHeight: 44,
+                minWidth: 44,
+                flexShrink: 0
               }}
+              aria-label="Send project room message"
             >
-              <Send size={16} /> Send
+              <Send size={16} /> <span className="show-desktop">Send</span>
             </button>
           </form>
         </div>
@@ -1655,9 +1674,10 @@ export default function ProjectWorkspace() {
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-xl)',
-            width: '100%',
+            width: 'min(440px, calc(100vw - 24px))',
             maxWidth: 440,
-            padding: 28,
+            padding: '24px 18px',
+            boxSizing: 'border-box',
             boxShadow: 'var(--shadow-lg)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -1776,9 +1796,10 @@ export default function ProjectWorkspace() {
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-xl)',
-            width: '100%',
+            width: 'min(440px, calc(100vw - 24px))',
             maxWidth: 440,
-            padding: 28,
+            padding: '24px 18px',
+            boxSizing: 'border-box',
             boxShadow: 'var(--shadow-lg)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>

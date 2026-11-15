@@ -270,11 +270,12 @@ export default function Tasks() {
 
       {/* Board View */}
       {viewMode === 'board' ? (
-        <div style={{
+        <div className="table-responsive" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, minmax(260px, 1fr))',
           gap: 16,
           overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
           paddingBottom: 16
         }}>
           {STATUS_COLUMNS.map((col) => {
@@ -527,9 +528,10 @@ export default function Tasks() {
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-xl)',
-            width: '100%',
+            width: 'min(580px, calc(100vw - 24px))',
             maxWidth: 580,
-            padding: '32px',
+            padding: '24px 18px',
+            boxSizing: 'border-box',
             boxShadow: 'var(--shadow-lg)',
             maxHeight: '90vh',
             display: 'flex',
@@ -639,9 +641,10 @@ export default function Tasks() {
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-xl)',
-            width: '100%',
+            width: 'min(500px, calc(100vw - 24px))',
             maxWidth: 500,
-            padding: '32px',
+            padding: '24px 18px',
+            boxSizing: 'border-box',
             boxShadow: 'var(--shadow-lg)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>

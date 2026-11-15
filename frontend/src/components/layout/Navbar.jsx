@@ -12,7 +12,9 @@ import {
   Trash2,
   ExternalLink,
   ChevronDown,
-  LayoutDashboard
+  LayoutDashboard,
+  Menu,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -20,7 +22,7 @@ import { useSocket } from '../../contexts/SocketContext';
 import { notificationService } from '../../services';
 import toast from 'react-hot-toast';
 
-export default function Navbar() {
+export default function Navbar({ onToggleMobileNav }) {
   const { user, logout, isAdmin } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { socket } = useSocket();
@@ -134,52 +136,110 @@ export default function Navbar() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: '0 24px',
+      padding: '0 16px',
       position: 'sticky',
       top: 0,
       zIndex: 40,
       transition: 'background 0.2s, border-color 0.2s'
     }}>
-      {/* Search Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, maxWidth: 440 }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          background: 'var(--bg-hover)',
-          padding: '8px 14px',
-          borderRadius: 'var(--radius)',
-          width: '100%',
-          border: '1px solid transparent',
-          transition: 'all 0.2s'
-        }}>
-          <Search size={18} style={{ color: 'var(--text-muted)' }} />
-          <input
-            type="text"
-            placeholder="Search projects, tasks, files..."
-            style={{
-              border: 'none',
-              background: 'transparent',
-              outline: 'none',
-              width: '100%',
-              fontSize: '0.875rem',
-              color: 'var(--text)',
-              fontFamily: 'inherit'
-            }}
-          />
-          <kbd style={{
-            fontSize: '0.7rem',
-            padding: '2px 6px',
-            background: 'var(--bg-card)',
+      {/* Left: Mobile Hamburger + Brand / Desktop Search */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+        {/* Mobile Hamburger Drawer Toggle */}
+        <button
+          onClick={onToggleMobileNav}
+          className="mobile-menu-btn hide-desktop"
+          style={{
+            background: 'var(--bg-hover)',
             border: '1px solid var(--border)',
-            borderRadius: 4,
-            color: 'var(--text-muted)'
-          }}>⌘K</kbd>
+            borderRadius: 'var(--radius)',
+            padding: '8px 10px',
+            color: 'var(--text)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 44,
+            minHeight: 44,
+            flexShrink: 0
+          }}
+          aria-label="Open mobile navigation"
+        >
+          <Menu size={22} />
+        </button>
+
+        {/* Mobile Brand Indicator */}
+        <Link
+          to="/dashboard"
+          className="hide-desktop"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            textDecoration: 'none',
+            color: 'inherit',
+            flexShrink: 0
+          }}
+        >
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 'var(--radius)',
+            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: '0.85rem'
+          }}>
+            ST
+          </div>
+          <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+            SecureTeam
+          </span>
+        </Link>
+
+        {/* Desktop Search Bar */}
+        <div className="show-desktop" style={{ alignItems: 'center', gap: 12, flex: 1, maxWidth: 440 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: 'var(--bg-hover)',
+            padding: '8px 14px',
+            borderRadius: 'var(--radius)',
+            width: '100%',
+            border: '1px solid transparent',
+            transition: 'all 0.2s'
+          }}>
+            <Search size={18} style={{ color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              placeholder="Search projects, tasks, files..."
+              style={{
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                width: '100%',
+                fontSize: '0.875rem',
+                color: 'var(--text)',
+                fontFamily: 'inherit'
+              }}
+            />
+            <kbd style={{
+              fontSize: '0.7rem',
+              padding: '2px 6px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 4,
+              color: 'var(--text-muted)'
+            }}>⌘K</kbd>
+          </div>
         </div>
       </div>
 
       {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         {/* Quick Role Switcher Button (Administrators Only) */}
         {isAdmin && (
           <button
@@ -188,8 +248,8 @@ export default function Navbar() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
+              gap: 4,
+              padding: '6px 10px',
               borderRadius: 999,
               fontSize: '0.75rem',
               fontWeight: 700,
@@ -197,10 +257,11 @@ export default function Navbar() {
               color: location.pathname.startsWith('/admin') ? 'var(--primary)' : '#d97706',
               border: location.pathname.startsWith('/admin') ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
               cursor: 'pointer',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              minHeight: 38
             }}
           >
-            {location.pathname.startsWith('/admin') ? '⚡ View as User' : '⚡ View as Admin'}
+            {location.pathname.startsWith('/admin') ? '⚡ User' : '⚡ Admin'}
           </button>
         )}
 
@@ -213,12 +274,14 @@ export default function Navbar() {
             border: '1px solid var(--border)',
             color: 'var(--text)',
             cursor: 'pointer',
-            padding: 8,
+            padding: 9,
             borderRadius: 'var(--radius)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            minWidth: 40,
+            minHeight: 40
           }}
         >
           {isDark ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#6366f1" />}
@@ -234,21 +297,23 @@ export default function Navbar() {
               border: '1px solid var(--border)',
               color: showNotifications ? 'var(--primary)' : 'var(--text)',
               cursor: 'pointer',
-              padding: 8,
+              padding: 9,
               borderRadius: 'var(--radius)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              minWidth: 40,
+              minHeight: 40
             }}
           >
             <Bell size={18} />
             {unreadCount > 0 && (
               <span style={{
                 position: 'absolute',
-                top: -4,
-                right: -4,
+                top: -3,
+                right: -3,
                 background: 'var(--danger)',
                 color: '#fff',
                 fontSize: '0.65rem',
@@ -271,7 +336,7 @@ export default function Navbar() {
               position: 'absolute',
               right: 0,
               top: 'calc(100% + 8px)',
-              width: 340,
+              width: 'min(340px, calc(100vw - 24px))',
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
               borderRadius: 'var(--radius-lg)',
@@ -356,10 +421,11 @@ export default function Navbar() {
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '4px 8px',
+              gap: 8,
+              padding: '4px 6px',
               borderRadius: 'var(--radius)',
-              transition: 'background 0.2s'
+              transition: 'background 0.2s',
+              minHeight: 40
             }}
           >
             <div style={{
@@ -373,11 +439,12 @@ export default function Navbar() {
               justifyContent: 'center',
               fontWeight: 700,
               fontSize: '0.85rem',
-              boxShadow: 'var(--shadow-sm)'
+              boxShadow: 'var(--shadow-sm)',
+              flexShrink: 0
             }}>
               {getInitials(user?.name)}
             </div>
-            <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
+            <div className="show-desktop" style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>
                 {user?.name || 'Workspace User'}
               </span>

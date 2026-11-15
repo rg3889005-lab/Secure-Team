@@ -167,11 +167,12 @@ export default function AuditLogs() {
       </div>
 
       {/* Logs Table */}
-      <div style={{
+      <div className="table-responsive" style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius-lg)',
-        overflow: 'hidden',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
         boxShadow: 'var(--shadow-sm)'
       }}>
         {loading ? (

@@ -70,7 +70,7 @@ export default function AdminAnalytics() {
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius-xl)',
-        padding: '24px',
+        padding: 'clamp(16px, 3vw, 24px)',
         boxShadow: 'var(--shadow-sm)'
       }}>
         <div style={{ marginBottom: 20 }}>
@@ -114,13 +114,13 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Bottom Grid: Department Allocation & Statuses */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 24 }}>
         {/* Department Distribution */}
         <div style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-xl)',
-          padding: '24px',
+          padding: 'clamp(16px, 3vw, 24px)',
           boxShadow: 'var(--shadow-sm)'
         }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text)' }}>
